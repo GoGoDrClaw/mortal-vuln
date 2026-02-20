@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>⚔ MORTAL KOMBAT CTF ⚔</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Press Start 2P', monospace;
+      background: #040409;
+      color: #c8b860;
+      min-height: 100vh;
+      padding: 20px;
+      overflow-x: hidden;
+    }
+
+    /* ── Scanlines ── */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: repeating-linear-gradient(
+        0deg, transparent 0px, transparent 1px,
+        rgba(0,0,0,0.18) 1px, rgba(0,0,0,0.18) 2px
+      );
+      pointer-events: none;
+      z-index: 999;
+    }
+
+    /* ── Header ── */
+    .mk-header {
+      text-align: center;
+      padding: 20px;
+      margin-bottom: 24px;
+      border: 1px solid #aa7700;
+      box-shadow: 0 0 0 1px #332200, 0 0 30px rgba(170,119,0,0.2), inset 0 0 30px rgba(0,0,0,0.5);
+      background: #06060e;
+      position: relative;
+    }
+
+    .mk-header-deco {
+      font-size: 10px;
+      color: #554400;
+      letter-spacing: 4px;
+      margin-bottom: 10px;
+    }
+
+    .mk-header h1 {
+      font-size: clamp(14px, 3vw, 26px);
+      color: #ffdd00;
+      text-shadow: 2px 2px 0 #880000, 0 0 20px rgba(255,200,0,0.5);
+      letter-spacing: 4px;
+      margin-bottom: 12px;
+    }
+
+    .mk-header-sub {
+      font-size: clamp(5px, 1vw, 7px);
+      color: #887755;
+      letter-spacing: 3px;
+      margin-bottom: 12px;
+    }
+
+    .mk-divider {
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #aa7700, #ffdd00, #aa7700, transparent);
+      margin: 10px 0;
+      box-shadow: 0 0 6px rgba(255,220,0,0.3);
+    }
+
+    #ws-status {
+      font-size: clamp(6px, 1vw, 8px);
+      letter-spacing: 2px;
+      color: #ffdd00;
+    }
+
+    /* ── Scoreboard grid (3 per row) ── */
+    .mk-scoreboard {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    @media (max-width: 900px) {
+      .mk-scoreboard { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 580px) {
+      .mk-scoreboard { grid-template-columns: 1fr; }
+    }
+
+    /* ── Team card (horizontal, 4-per-row grid) ── */
+    .mk-team-card {
+      background: #06060e;
+      border: 1px solid #221500;
+      display: flex;
+      flex-direction: row;
+      align-items: stretch;
+      transition: box-shadow 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mk-team-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(90deg,
+        rgba(var(--cr), 0.10) 0%,
+        rgba(var(--cr), 0.04) 30%,
+        rgba(0,0,0,0.0) 70%
+      );
+      pointer-events: none;
+    }
+
+    .mk-team-card:hover {
+      box-shadow: 0 0 20px rgba(var(--cr), 0.35);
+      border-color: var(--cc);
+    }
+
+
+    /* Character portrait — left side */
+    .mk-card-portrait {
+      position: relative;
+      width: 70px;
+      flex-shrink: 0;
+      overflow: hidden;
+      background: #030308;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-right: 2px solid var(--cc);
+    }
+
+    .mk-card-portrait img {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: top center;
+      filter: contrast(1.05) brightness(0.85) saturate(0.85);
+    }
+
+    .mk-card-portrait-emoji {
+      font-size: 28px;
+      filter: drop-shadow(0 0 8px rgba(var(--cr), 0.8));
+    }
+
+    .mk-rank-badge {
+      position: absolute;
+      top: 0;
+      right: 0;
+      font-size: 7px;
+      padding: 5px;
+      background: rgba(0,0,0,0.85);
+      border: 1px solid var(--cc);
+      color: var(--cc);
+      z-index: 2;
+    }
+
+    /* Card body — right side */
+    .mk-card-body {
+      padding: 8px 10px;
+      position: relative;
+      z-index: 1;
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+    }
+
+    .mk-card-name-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .mk-card-name {
+      font-size: clamp(8px, 1.2vw, 11px);
+      color: var(--cc);
+      text-shadow: 0 0 8px rgba(var(--cr), 0.5);
+      letter-spacing: 2px;
+    }
+
+    .mk-card-score {
+      font-size: clamp(16px, 2.5vw, 22px);
+      color: #ffdd00;
+      text-shadow: 0 0 10px rgba(255,220,0,0.6);
+    }
+
+    /* Health bar */
+    .mk-health-wrap { }
+
+    .mk-health-label {
+      font-size: 6px;
+      color: #554433;
+      letter-spacing: 2px;
+      margin-bottom: 3px;
+    }
+
+    .mk-health-track {
+      height: 10px;
+      background: #0a0a0a;
+      border: 1px solid #332200;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .mk-health-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #cc2200 0%, #ffdd00 60%, #ffff00 100%);
+      transition: width 0.8s ease-out;
+      box-shadow: 0 0 8px rgba(255,200,0,0.4);
+      position: relative;
+    }
+
+    .mk-health-fill::after {
+      content: '';
+      position: absolute;
+      top: 0; right: 0;
+      width: 3px;
+      height: 100%;
+      background: #fff;
+      opacity: 0.6;
+    }
+
+    /* Task list */
+    .mk-tasks {
+      list-style: none;
+      font-size: 6px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 3px;
+      color: #887755;
+    }
+
+    .mk-task-item {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 6px;
+      background: rgba(255,255,255,0.03);
+      border-left: 2px solid rgba(var(--cr), 0.4);
+    }
+
+    .mk-task-name { color: #bbaa66; }
+    .mk-task-pts  { color: var(--cc); }
+    .mk-task-time { display: none; }
+
+    .mk-no-tasks {
+      font-size: 6px;
+      color: #332200;
+      letter-spacing: 1px;
+    }
+
+    /* ── Activity log ── */
+    .mk-activity-panel {
+      background: #06060e;
+      border: 1px solid #aa7700;
+      box-shadow: 0 0 0 1px #332200, inset 0 0 20px rgba(0,0,0,0.5);
+    }
+
+    .mk-activity-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #332200;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .mk-activity-title {
+      font-size: clamp(8px, 1.4vw, 11px);
+      color: #ffdd00;
+      text-shadow: 0 0 8px rgba(255,220,0,0.4);
+      letter-spacing: 2px;
+    }
+
+    .mk-activity-dot {
+      width: 8px; height: 8px;
+      background: #cc2200;
+      border-radius: 50%;
+      box-shadow: 0 0 6px #cc2200;
+      animation: mk-pulse 1.2s ease-in-out infinite;
+    }
+
+    @keyframes mk-pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50%       { opacity: 0.4; transform: scale(0.7); }
+    }
+
+    .mk-activity-feed {
+      padding: 10px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .log-entry {
+      padding: 8px 10px;
+      margin-bottom: 6px;
+      border-left: 3px solid;
+      background: rgba(255,255,255,0.02);
+      font-size: 7px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      animation: mk-slide-in 0.4s ease-out;
+    }
+
+    .log-entry.new {
+      animation: mk-flash-in 0.6s ease-out;
+    }
+
+    @keyframes mk-slide-in {
+      from { opacity: 0; transform: translateX(-12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes mk-flash-in {
+      0%   { opacity: 0; transform: translateX(-12px); background: rgba(255,220,0,0.15); }
+      40%  { background: rgba(255,220,0,0.08); }
+      100% { opacity: 1; transform: translateX(0); background: rgba(255,255,255,0.02); }
+    }
+
+    .log-left { display: flex; align-items: center; gap: 8px; flex: 1; }
+    .log-team { font-weight: bold; letter-spacing: 1px; white-space: nowrap; }
+    .log-desc { color: #887755; }
+    .log-pts  { white-space: nowrap; }
+    .log-time { color: #443322; white-space: nowrap; font-size: 6px; }
+
+    .mk-empty-feed {
+      font-size: 7px;
+      color: #332200;
+      text-align: center;
+      padding: 30px;
+      letter-spacing: 2px;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #030308; }
+    ::-webkit-scrollbar-thumb { background: #443300; }
+    ::-webkit-scrollbar-thumb:hover { background: #aa7700; }
+  </style>
+</head>
+<body>
+
+  <div class="mk-header">
+    <div class="mk-header-deco">▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬</div>
+    <h1>⚔ MORTAL KOMBAT CTF ⚔</h1>
+    <div class="mk-header-sub">// TOURNAMENT SCOREBOARD — INSTRUCTOR VIEW //</div>
+    <div class="mk-divider"></div>
+    <div id="ws-status">⚡ CONNECTING TO OUTWORLD...</div>
+  </div>
+
+  <div class="mk-scoreboard" id="scoreboard"></div>
+
+  <div class="mk-activity-panel">
+    <div class="mk-activity-header">
+      <div class="mk-activity-dot"></div>
+      <div class="mk-activity-title">☠ FATALITY FEED — LIVE</div>
+    </div>
+    <div class="mk-activity-feed">
+      <div id="activity">
+        <div class="mk-empty-feed">AWAITING KOMBAT...</div>
+      </div>
+    </div>
+  </div>
+
+  <button id="audio-unlock" title="Unlock audio" onclick="unlockAudio(this)">🔇</button>
+  <style>
+    #audio-unlock {
+      position: fixed;
+      bottom: 10px;
+      right: 12px;
+      background: none;
+      border: none;
+      font-size: 12px;
+      opacity: 0.18;
+      cursor: pointer;
+      z-index: 1000;
+      padding: 4px;
+      transition: opacity 0.2s;
+    }
+    #audio-unlock:hover { opacity: 0.5; }
+  </style>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

@@ -1,0 +1,656 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, sans-serif;
+  background: #040409;
+  color: #c8b860;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+/* ── App header (visible in login/app views) ── */
+.mk-app-header {
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.mk-app-logo {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(14px, 3vw, 24px);
+  color: #ffdd00;
+  text-shadow: 2px 2px 0 #880000, 0 0 20px rgba(255,200,0,0.4);
+  letter-spacing: 4px;
+  margin-bottom: 6px;
+}
+
+.mk-app-subtitle {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(5px, 1vw, 7px);
+  color: #887755;
+  letter-spacing: 2px;
+  margin-bottom: 0;
+}
+
+.mk-warn-banner {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(5px, 1vw, 7px);
+  background: rgba(136,0,0,0.25);
+  border-top: 1px solid #550000;
+  border-bottom: 1px solid #550000;
+  color: #cc2200;
+  padding: 8px 12px;
+  margin-bottom: 20px;
+  text-align: center;
+  letter-spacing: 2px;
+  overflow: hidden;
+  animation: mk-warn-blink 2s steps(1) infinite;
+}
+
+@keyframes mk-warn-blink {
+  0%, 70% { opacity: 1; }
+  71%, 100% { opacity: 0.6; }
+}
+
+/* ── MK Panel (replaces .card) ── */
+.mk-panel {
+  background: #06060e;
+  border: 1px solid #aa7700;
+  box-shadow: 0 0 0 1px #332200, inset 0 0 30px rgba(0,0,0,0.6);
+  padding: 18px 20px;
+  margin-bottom: 14px;
+}
+
+.mk-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.mk-panel-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(8px, 1.5vw, 11px);
+  color: #ffdd00;
+  text-shadow: 0 0 8px rgba(255,220,0,0.4);
+  letter-spacing: 2px;
+}
+
+.mk-panel-divider {
+  height: 1px;
+  background: linear-gradient(90deg, #aa7700, #554400, transparent);
+  margin-bottom: 14px;
+}
+
+.mk-label {
+  display: block;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(5px, 0.9vw, 7px);
+  color: #bbaa66;
+  letter-spacing: 1px;
+  margin-bottom: 5px;
+}
+
+.mk-btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ── Inputs ── */
+input, textarea, select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #443300;
+  border-radius: 0;
+  background: #03030a;
+  color: #c8b860;
+  margin-bottom: 12px;
+  font-size: 13px;
+  font-family: monospace;
+  outline: none;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+input:focus, textarea:focus {
+  border-color: #aa7700;
+  box-shadow: 0 0 8px rgba(170,119,0,0.35), inset 0 0 4px rgba(170,119,0,0.1);
+}
+
+input::placeholder, textarea::placeholder {
+  color: #665544;
+}
+
+/* ── Buttons ── */
+button {
+  padding: 10px 18px;
+  border-radius: 0;
+  border: 1px solid currentColor;
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(6px, 1vw, 8px);
+  letter-spacing: 1px;
+  transition: all 0.1s;
+}
+
+.btn-primary {
+  background: transparent;
+  color: #22c55e;
+  border-color: #22c55e;
+  text-shadow: 0 0 6px rgba(34,197,94,0.5);
+}
+
+.btn-primary:hover {
+  background: #22c55e;
+  color: #000;
+  box-shadow: 0 0 12px rgba(34,197,94,0.5);
+  text-shadow: none;
+}
+
+.btn-danger {
+  background: transparent;
+  color: #cc2200;
+  border-color: #660000;
+  font-size: clamp(5px, 0.9vw, 7px);
+  padding: 7px 12px;
+}
+
+.btn-danger:hover {
+  background: rgba(136,0,0,0.3);
+  border-color: #cc2200;
+  box-shadow: 0 0 8px rgba(204,34,0,0.4);
+}
+
+/* ── HUD header bar ── */
+.mk-hud {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #06060e;
+  border: 1px solid #332200;
+  border-bottom: 2px solid #aa7700;
+  padding: 10px 16px;
+  margin-bottom: 14px;
+}
+
+.mk-hud-fighter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: 'Press Start 2P', monospace;
+}
+
+.mk-hud-label {
+  font-size: 6px;
+  color: #998866;
+  letter-spacing: 1px;
+}
+
+.mk-hud-fighter strong {
+  font-size: clamp(7px, 1.2vw, 10px);
+  color: #ffdd00;
+  text-shadow: 0 0 6px rgba(255,220,0,0.4);
+}
+
+.mk-hud-actions {
+  display: flex;
+  gap: 8px;
+}
+
+/* ── Tabs ── */
+.tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 14px;
+  border-bottom: 1px solid #332200;
+}
+
+.tab {
+  padding: 8px 14px;
+  cursor: pointer;
+  background: transparent;
+  color: #998866;
+  border: 1px solid transparent;
+  border-bottom: none;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(5px, 0.9vw, 7px);
+  letter-spacing: 1px;
+  transition: all 0.1s;
+}
+
+.tab:hover {
+  color: #ccaa77;
+  border-color: #554400;
+}
+
+.tab.active {
+  background: #06060e;
+  color: #ffdd00;
+  border-color: #aa7700;
+  border-bottom-color: #06060e;
+  text-shadow: 0 0 6px rgba(255,220,0,0.4);
+  margin-bottom: -1px;
+}
+
+/* ── Note scrolls ── */
+.note {
+  background: #05050d;
+  border: 1px solid #221500;
+  border-left: 3px solid #aa7700;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  transition: border-left-color 0.15s;
+}
+
+.note:hover {
+  border-left-color: #ffdd00;
+  background: #07070f;
+}
+
+.note h3 {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(7px, 1.2vw, 9px);
+  color: #ffdd00;
+  margin-bottom: 10px;
+  letter-spacing: 1px;
+  text-shadow: 0 0 6px rgba(255,220,0,0.3);
+}
+
+.note p {
+  color: #a08860;
+  font-size: 13px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+  font-family: monospace;
+}
+
+.note-meta {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(4px, 0.8vw, 6px);
+  color: #887755;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ── Misc ── */
+.hidden { display: none; }
+
+.error {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(6px, 1vw, 8px);
+  color: #cc2200;
+  margin-top: 10px;
+  padding: 8px;
+  border: 1px solid #550000;
+  background: rgba(136,0,0,0.15);
+}
+
+.success {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(6px, 1vw, 8px);
+  color: #22c55e;
+  margin-top: 10px;
+  text-shadow: 0 0 6px rgba(34,197,94,0.5);
+}
+
+.token-display {
+  font-family: monospace;
+  font-size: 10px;
+  word-break: break-all;
+  background: #03030a;
+  border: 1px solid #554400;
+  padding: 10px;
+  margin-top: 10px;
+  color: #bbaa55;
+  max-height: 80px;
+  overflow: auto;
+}
+
+.team-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(5px, 0.9vw, 7px);
+  font-weight: 700;
+  color: #000;
+  letter-spacing: 1px;
+}
+
+#lookup-result, #flag-result {
+  margin-top: 12px;
+}
+
+/* ══════════════════════════════════════════════════
+   MORTAL KOMBAT 3 — CHARACTER SELECT SCREEN
+   ══════════════════════════════════════════════════ */
+
+#team-section {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 20px 16px;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 90% 40% at 50% 110%, rgba(180,20,0,0.18) 0%, transparent 70%),
+    linear-gradient(180deg, #050814 0%, #0a0e1c 50%, #080510 100%);
+}
+
+#team-section.hidden {
+  display: none;
+}
+
+/* CRT scanlines */
+.mk-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent 0px,
+    transparent 1px,
+    rgba(0,0,0,0.22) 1px,
+    rgba(0,0,0,0.22) 2px
+  );
+  pointer-events: none;
+  z-index: 20;
+}
+
+/* Corner vignette */
+.mk-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 100% 100% at 50% 50%, transparent 55%, rgba(0,0,0,0.7) 100%);
+  pointer-events: none;
+  z-index: 19;
+}
+
+/* ── Header ── */
+.mk-header {
+  text-align: center;
+  position: relative;
+  z-index: 5;
+}
+
+.mk-title-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.mk-title-line {
+  flex: 1;
+  max-width: 80px;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, #aa7700, #ffdd00);
+}
+
+.mk-title-row .mk-title-line:last-child {
+  background: linear-gradient(90deg, #ffdd00, #aa7700, transparent);
+}
+
+.mk-title {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(11px, 2.2vw, 20px);
+  color: #ffdd00;
+  text-shadow:
+    2px 2px 0 #880000,
+    -1px -1px 0 #660000,
+    0 0 16px rgba(255,200,0,0.5);
+  letter-spacing: 3px;
+  white-space: nowrap;
+  margin: 0;
+}
+
+.mk-p1-label {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(6px, 1.1vw, 9px);
+  color: #cc2200;
+  text-shadow: 0 0 8px #ff4400;
+  letter-spacing: 2px;
+  animation: mk-p1-blink 1.2s steps(1) infinite;
+}
+
+@keyframes mk-p1-blink {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0.3; }
+}
+
+/* ── Grid wrapper ── */
+.mk-grid-frame {
+  border: 2px solid #aa7700;
+  box-shadow:
+    0 0 0 1px #554400,
+    0 0 30px rgba(180,120,0,0.25),
+    inset 0 0 20px rgba(0,0,0,0.6);
+  padding: 4px;
+  background: #060606;
+  position: relative;
+  z-index: 5;
+}
+
+/* ── Character grid ── */
+.mk-select-grid {
+  display: grid;
+  /* grid-template-columns set dynamically by JS based on team count */
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+}
+
+/* ── Character cell ── */
+.mk-cell {
+  width: var(--cell-w, clamp(100px, 18vw, 180px));
+  cursor: pointer;
+  border: 2px solid #1a1a2a;
+  background: #080810;
+  transition: border-color 0.08s, box-shadow 0.08s;
+  position: relative;
+}
+
+/* --cc and --cr are set inline by JS per character */
+
+.mk-cell:hover,
+.mk-cell.mk-cursor {
+  border-color: #ffdd00;
+  box-shadow:
+    0 0 0 1px #ffdd00,
+    0 0 12px #ffdd00,
+    0 0 30px rgba(255,220,0,0.4),
+    inset 0 0 8px rgba(255,220,0,0.1);
+}
+
+/* ── Portrait area ── */
+.mk-cell-inner {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  background:
+    linear-gradient(180deg,
+      rgba(var(--cr), 0.06) 0%,
+      rgba(var(--cr), 0.14) 55%,
+      rgba(0,0,0,0.85) 100%
+    ),
+    #08080e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mk-cell:hover .mk-cell-inner,
+.mk-cell.mk-cursor .mk-cell-inner {
+  background:
+    linear-gradient(180deg,
+      rgba(var(--cr), 0.12) 0%,
+      rgba(var(--cr), 0.28) 55%,
+      rgba(0,0,0,0.7) 100%
+    ),
+    #08080e;
+}
+
+/* Fallback emoji */
+.mk-fallback {
+  font-size: clamp(36px, 6vw, 60px);
+  position: absolute;
+  filter: drop-shadow(0 0 6px rgba(var(--cr), 0.9));
+}
+
+/* Actual character image */
+.mk-char-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  filter: contrast(1.05) brightness(0.92) saturate(0.88);
+  transition: filter 0.15s;
+}
+
+.mk-cell:hover .mk-char-img,
+.mk-cell.mk-cursor .mk-char-img {
+  filter: contrast(1.1) brightness(1.05) saturate(1.0);
+}
+
+/* Scanlines on cell portraits removed — conflicts with animated GIFs (flickering).
+   Global scanlines on body::before cover the whole screen instead. */
+
+/* ── Character name bar ── */
+.mk-cell-name {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(5px, 0.9vw, 7px);
+  color: #c8b860;
+  text-align: center;
+  padding: 6px 4px 5px;
+  background: #0a0a0e;
+  border-top: 1px solid #1a1a2a;
+  letter-spacing: 1px;
+  transition: color 0.08s, background 0.08s;
+}
+
+.mk-cell:hover .mk-cell-name,
+.mk-cell.mk-cursor .mk-cell-name {
+  color: #ffdd00;
+  background: #0e0e08;
+  text-shadow: 0 0 6px #ffdd00;
+}
+
+/* ── Bottom bar ── */
+.mk-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 560px;
+  padding: 5px 10px;
+  background: #06060e;
+  border-top: 1px solid #332200;
+  border-bottom: 1px solid #332200;
+  position: relative;
+  z-index: 5;
+}
+
+.mk-bottom-bar span {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(4px, 0.7vw, 6px);
+  color: #886633;
+  letter-spacing: 1px;
+  white-space: nowrap;
+}
+
+.mk-bottom-center {
+  color: #aaa !important;
+  flex: 1;
+  text-align: center;
+  padding: 0 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Scrolling ticker ── */
+.mk-ticker-wrap {
+  width: 100%;
+  overflow: hidden;
+  border-top: 1px solid #440000;
+  background: rgba(80,0,0,0.15);
+  position: relative;
+  z-index: 5;
+}
+
+.mk-ticker {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(5px, 0.8vw, 7px);
+  color: #cc2200;
+  white-space: nowrap;
+  padding: 4px 0;
+  animation: mk-scroll 28s linear infinite;
+  letter-spacing: 2px;
+}
+
+@keyframes mk-scroll {
+  0%   { transform: translateX(100vw); }
+  100% { transform: translateX(-200%); }
+}
+
+/* ── FIGHT! overlay ── */
+.mk-fight-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.0);
+  animation: mk-overlay-flash 0.15s steps(1) infinite;
+}
+
+.mk-fight-overlay.hidden {
+  display: none;
+}
+
+.mk-fight-text {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(40px, 9vw, 80px);
+  color: #ffdd00;
+  text-shadow:
+    0 0 20px #ffdd00,
+    0 0 40px #ff8800,
+    4px 4px 0 #880000,
+    -2px -2px 0 #880000;
+  letter-spacing: 10px;
+  animation: mk-fight-pop 0.85s cubic-bezier(0.17,0.67,0.35,1.2) forwards;
+}
+
+@keyframes mk-fight-pop {
+  0%   { transform: scale(0.3) rotate(-5deg); opacity: 0; }
+  40%  { transform: scale(1.25) rotate(1deg);  opacity: 1; }
+  65%  { transform: scale(0.95);               opacity: 1; }
+  100% { transform: scale(1.05);               opacity: 1; }
+}
+
+@keyframes mk-overlay-flash {
+  0%, 49%  { background: rgba(0,0,0,0.82); }
+  50%, 100% { background: rgba(15,0,0,0.82); }
+}
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .mk-select-grid { grid-template-columns: repeat(2, 1fr) !important; }
+  .mk-title { letter-spacing: 1px; }
+  .mk-bottom-bar { display: none; }
+}

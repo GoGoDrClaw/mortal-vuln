@@ -1,0 +1,46 @@
+# VulnNotes CTF - Caddy Configuration
+# Supports both HTTP and HTTPS based on domain
+
+{
+	# auto_https is ON by default for real domains (Let's Encrypt)
+	# For localhost it's automatically OFF — use DOMAIN=localhost for local dev
+}
+
+# Main App - Frontend
+{$DOMAIN:localhost} {
+	root * /srv/frontend
+	try_files {path} /index.html
+	file_server
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+# API + WebSocket
+api.{$DOMAIN:localhost} {
+	reverse_proxy backend:3000 {
+		# Caddy v2 handles WebSocket upgrades automatically
+		transport http {
+			versions 1.1
+		}
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}
+
+# Dashboard (real-time scoreboard)
+dashboard.{$DOMAIN:localhost} {
+	root * /srv/dashboard
+	try_files {path} /index.html
+	file_server
+
+	log {
+		output stdout
+		format console
+	}
+}

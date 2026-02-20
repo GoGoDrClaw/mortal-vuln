@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VulnNotes 🔓</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <!--
+    Test your might! Test your might! Test your might!
+    The ancient warriors knew the way...
+    Seek the legendary sequence from the realm of arcade legends.
+    4B6F6E616D6920436F6465
+  -->
+</head>
+<body>
+  <div class="container">
+    <div class="mk-app-header">
+      <div class="mk-app-logo">⚔ VULNNOTES ⚔</div>
+      <p class="mk-app-subtitle">// OUTWORLD SECRET DATABASE //</p>
+    </div>
+    <div class="mk-warn-banner">☠ MORTAL KOMBAT ☠ &nbsp; FIND ALL VULNERABILITIES AND SURVIVE &nbsp; ☠ MORTAL KOMBAT ☠</div>
+
+    <div id="team-section">
+      <div class="mk-scanlines"></div>
+      <div class="mk-vignette"></div>
+
+      <div class="mk-header">
+        <div class="mk-title-row">
+          <div class="mk-title-line"></div>
+          <h2 class="mk-title">CHOOSE YOUR FIGHTER</h2>
+          <div class="mk-title-line"></div>
+        </div>
+        <div class="mk-p1-label">▶&nbsp;PLAYER 1 SELECT&nbsp;◀</div>
+      </div>
+
+      <div class="mk-grid-frame">
+        <div class="mk-select-grid">
+          <!-- Populated dynamically by app.js from /api/teams -->
+        </div>
+      </div>
+
+      <div class="mk-bottom-bar">
+        <span class="mk-bottom-left">⚔ VULNNOTES CTF</span>
+        <span class="mk-bottom-center">◄ EACH TEAM HAS AN ISOLATED DATABASE ►</span>
+        <span class="mk-bottom-right">CREDITS: ∞</span>
+      </div>
+
+      <div class="mk-ticker-wrap">
+        <div class="mk-ticker">⚠ TEST YOUR MIGHT ⚠ VULNNOTES CTF ⚠ FIND ALL VULNERABILITIES ⚠ TEST YOUR MIGHT ⚠ VULNNOTES CTF ⚠ FIND ALL VULNERABILITIES ⚠ TEST YOUR MIGHT ⚠ VULNNOTES CTF ⚠ FIND ALL VULNERABILITIES ⚠</div>
+      </div>
+
+      <div id="mk-fight-overlay" class="mk-fight-overlay hidden">
+        <div class="mk-fight-text">FIGHT!</div>
+      </div>
+    </div>
+
+    <div id="login-section" class="hidden">
+      <div class="mk-panel">
+        <div class="mk-panel-header">
+          <span class="mk-panel-title">⚔ KOMBAT LOGIN</span>
+          <span id="team-indicator"></span>
+        </div>
+        <div class="mk-panel-divider"></div>
+        <label class="mk-label">KOMBATANT</label>
+        <input id="login-user" placeholder="username"/>
+        <label class="mk-label">SECRET SCROLL</label>
+        <input id="login-pass" placeholder="password" type="password"/>
+        <div class="mk-btn-row">
+          <button class="btn-primary" onclick="doLogin()">▶ FIGHT!</button>
+          <button class="btn-danger" onclick="switchTeam()">◀ SWITCH FIGHTER</button>
+        </div>
+        <div id="login-error" class="error hidden"></div>
+        <div id="login-token" class="hidden">
+          <p class="success">✅ KOMBATANT AUTHENTICATED</p>
+          <div class="token-display" id="token-text"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="app-section" class="hidden">
+      <div class="mk-hud">
+        <div class="mk-hud-fighter">
+          <span class="mk-hud-label">FIGHTER</span>
+          <strong id="username-display"></strong>
+          <span id="app-team-indicator"></span>
+        </div>
+        <div class="mk-hud-actions">
+          <button class="btn-danger" onclick="resetDB()">⟳ RESET REALM</button>
+          <button class="btn-danger" onclick="doLogout()">RETREAT ▶</button>
+        </div>
+      </div>
+      <div class="tabs">
+        <button class="tab active" onclick="switchTab('notes',this)">📜 SCROLLS</button>
+        <button class="tab" onclick="switchTab('create',this)">✏ NEW SCROLL</button>
+      </div>
+      <div id="tab-notes"><div id="notes-list"></div></div>
+      <div id="tab-create" class="hidden">
+        <div class="mk-panel">
+          <div class="mk-panel-header"><span class="mk-panel-title">✏ NEW SCROLL</span></div>
+          <div class="mk-panel-divider"></div>
+          <label class="mk-label">SCROLL TITLE</label>
+          <input id="note-title" placeholder="Title..."/>
+          <label class="mk-label">CONTENT</label>
+          <textarea id="note-content" placeholder="Write your scroll..." rows="4"></textarea>
+          <button class="btn-primary" onclick="createNote()">▶ INSCRIBE</button>
+        </div>
+      </div>
+      <div id="tab-lookup" class="hidden">
+        <div id="lookup-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
