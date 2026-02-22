@@ -111,13 +111,23 @@ func route(mux *http.ServeMux) {
 
 func main() {
 	handlers.InitAllDBs()
+
+	// Start rate limiter GC (cleans stale per-IP entries)
+	middleware.StartLimiterGC()
+
+	// Start scheduled reset if RESET_TIME is set
+	tracker.StartResetScheduler(handlers.SeedAllDBs)
+
 	mux := http.NewServeMux()
 	route(mux)
+
+	// Wrap the entire mux with rate limiting
+	handler := middleware.RateLimitHandler(mux)
 
 	fmt.Printf("🔓 VulnNotes Backend started at %s\n", time.Now().Format("15:04:05"))
 	fmt.Printf("   Port: 3000\n")
 	fmt.Printf("   Teams: %s\n", strings.Join(middleware.Teams, ", "))
 	fmt.Printf("   WebSocket: ws://localhost:3000/ws\n")
 
-	log.Fatal(http.ListenAndServe(":3000", mux))
+	log.Fatal(http.ListenAndServe(":3000", handler))
 }

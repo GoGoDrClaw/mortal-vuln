@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"runtime/debug"
 	"strconv"
@@ -382,6 +383,17 @@ func InitAllDBs() {
 		middleware.DBs[team] = d
 		middleware.DBsLock.Unlock()
 	}
+}
+
+// SeedAllDBs re-seeds every team's database (used by scheduled reset).
+func SeedAllDBs() {
+	for _, team := range middleware.Teams {
+		d := middleware.GetTeamDB(team)
+		if d != nil {
+			seedDB(d)
+		}
+	}
+	log.Printf("🔄 All team databases re-seeded (%d teams)", len(middleware.Teams))
 }
 
 func DetectNoneAlg(w http.ResponseWriter, r *http.Request) {

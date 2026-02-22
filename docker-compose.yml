@@ -1,44 +1,23 @@
-version: '3.8'
-
-services:
-  caddy:
-    build: ./caddy
-    container_name: vulnnotes-caddy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - ./frontend:/srv/frontend:ro
-      - ./dashboard:/srv/dashboard:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    environment:
-      - DOMAIN=${DOMAIN:-localhost}
-    depends_on:
-      - backend
-    restart: unless-stopped
-    networks:
-      - vulnnotes
-
-  backend:
-    build: ./backend
-    container_name: vulnnotes-backend
-    volumes:
-      - ./data:/data
-    environment:
-      - PORT=3000
-      - JWT_SECRET=${JWT_SECRET:-secret123}
-      - TEAM_COUNT=${TEAM_COUNT:-6}
-    restart: unless-stopped
-    networks:
-      - vulnnotes
-
 networks:
   vulnnotes:
     driver: bridge
-
-volumes:
-  caddy_data:
-    driver: local
-  caddy_config:
-    driver: local
+services:
+  backend:
+    build: ./backend
+    container_name: vulnnotes-backend
+    environment:
+    - PORT=3000
+    - JWT_SECRET=${JWT_SECRET:-secret123}
+    - TEAM_COUNT=${TEAM_COUNT:-6}
+    - RESET_TIME=${RESET_TIME:-}
+    - RESET_TIMEZONE=${RESET_TIMEZONE:-UTC}
+    - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-20}
+    - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-40}
+    - RATE_LIMIT_DISABLED=${RATE_LIMIT_DISABLED:-}
+    networks:
+    - vulnnotes
+    restart: unless-stopped
+    volumes:
+    - ./data:/data
+version: '3.8'
+volumes: {}
