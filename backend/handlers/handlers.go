@@ -84,6 +84,10 @@ func NewSession(w http.ResponseWriter, r *http.Request) {
 
 	sess, err := db.CreateSession(nickname, character)
 	if err != nil {
+		if err == db.ErrDuplicateNicknameChar {
+			WriteJSON(w, 409, map[string]string{"error": "This name is already taken for this character. Choose a different character or use another name."})
+			return
+		}
 		log.Printf("❌ CreateSession: %v", err)
 		WriteJSON(w, 500, map[string]string{"error": "Failed to create session"})
 		return

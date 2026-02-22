@@ -78,6 +78,7 @@ func initSchema() error {
 	for _, q := range []string{
 		`ALTER TABLE task_completions ADD COLUMN IF NOT EXISTS first_blood BOOLEAN DEFAULT FALSE`,
 		`ALTER TABLE task_completions ADD COLUMN IF NOT EXISTS combo_bonus INTEGER DEFAULT 0`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS uq_sessions_nickname_character ON sessions(lower(nickname), character)`,
 	} {
 		if _, e := PG.Exec(q); e != nil {
 			return fmt.Errorf("migration: %w", e)
@@ -120,6 +121,9 @@ func (s *Session) DisplayCode() string {
 	return s.SaveCode
 }
 
+// ErrDuplicateNicknameChar is returned when the (nickname, character) pair already exists.
+var ErrDuplicateNicknameChar = fmt.Errorf("nickname_character_taken")
+
 // CreateSession inserts a new session, retrying on save_code collisions.
 func CreateSession(nickname, character string) (*Session, error) {
 	for i := 0; i < 5; i++ {
@@ -136,6 +140,11 @@ func CreateSession(nickname, character string) (*Session, error) {
 		if err == nil {
 			return &s, nil
 		}
+		// Unique violation on nickname+character — not a retry-able error
+		if strings.Contains(err.Error(), "uq_sessions_nickname_character") {
+			return nil, ErrDuplicateNicknameChar
+		}
+		// Unique violation on save_code — retry with new code
 		if strings.Contains(err.Error(), "unique") || strings.Contains(err.Error(), "duplicate") {
 			continue
 		}
