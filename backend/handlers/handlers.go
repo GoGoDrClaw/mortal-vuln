@@ -26,7 +26,7 @@ var validCharacters = map[string]bool{
 	"sonya": true, "shangtsung": true, "kano": true, "nightwolf": true,
 	"cyrax": true, "sektor": true, "kabal": true, "jade": true,
 	"sindel": true, "ermac": true, "sheeva": true, "stryker": true,
-	"smoke": true, "noobsaibot": true, "classicsubzero": true,
+	"smoke": true, "noobsaibot": true, "motaro": true, "shaokahn": true,
 }
 
 func WriteJSON(w http.ResponseWriter, code int, v any) {
@@ -98,9 +98,12 @@ func NewSession(w http.ResponseWriter, r *http.Request) {
 		Value:    sess.ID,
 		Path:     "/",
 		HttpOnly: false, // intentionally readable by JS (CTF)
+		MaxAge:   30 * 24 * 60 * 60,
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	})
+
+	go tracker.BroadcastNewSession()
 
 	WriteJSON(w, 200, map[string]string{
 		"saveCode":  sess.DisplayCode(),
@@ -135,6 +138,7 @@ func RestoreSession(w http.ResponseWriter, r *http.Request) {
 		Value:    sess.ID,
 		Path:     "/",
 		HttpOnly: false,
+		MaxAge:   30 * 24 * 60 * 60,
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	})
@@ -170,6 +174,25 @@ func CheckSession(w http.ResponseWriter, r *http.Request) {
 		"sessionId": sess.ID,
 		"nickname":  sess.Nickname,
 		"character": sess.Character,
+	})
+}
+
+// GET /api/session/progress — completed tasks for current session.
+func SessionProgress(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("session_id")
+	if err != nil || c.Value == "" {
+		WriteJSON(w, 401, map[string]string{"error": "No session"})
+		return
+	}
+	sess, err := db.GetSessionByID(c.Value)
+	if err != nil || sess == nil {
+		WriteJSON(w, 401, map[string]string{"error": "Invalid session"})
+		return
+	}
+	score := tracker.GetSessionScore(sess.ID)
+	WriteJSON(w, 200, map[string]interface{}{
+		"totalScore": score.TotalScore,
+		"completed":  score.Completed,
 	})
 }
 
@@ -239,6 +262,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		Value:    tokenStr,
 		Path:     "/",
 		HttpOnly: false,
+		MaxAge:   30 * 24 * 60 * 60,
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	})
@@ -467,14 +491,21 @@ pass=t0p_s3cret
 ⚠ TOP SECRET ⚠
 DO NOT SHARE WITH EARTHREALM WARRIORS
 Shang Tsung is personally responsible for security'),
-		(2, '📋 Tournament Shopping List', 'Milk, eggs, bread
-Sharpen the katanas
-New kimono (old one got ripped at the last tournament)
-Call Liu Kang about the training session'),
-		(2, '💡 Business Idea', 'Uber, but for inter-realm teleportation.
-Scorpion is already interested — he has his own portals.
-Raiden is against it, says it disrupts the balance.
-Outworld investors are ready to fund.'),
+		(2, 'How to submit a flag', 'curl -X POST https://api.test-your-might.ru/api/flag \
+  --cookie "session_id=<your_session_id>" \
+  -d "your_flag"'),
+		(2, 'Easy tasks (1 point each)', 'Task 0 — Log in to the app as alice
+Task 1 — Find critical information in the JWT token
+  Required: submit the field name via /api/flag
+Task 2 — Something important is missing from the JWT token
+  Required: submit the field name via /api/flag
+Task 3 — Gain access to someone else''s notes'),
+		(2, 'Medium tasks (2 points each)', 'Task 4 — Log in as administrator
+Task 5 — Find out the administrator password and log in using it
+Task 6 — Perform an XSS attack
+Task 7 — Delete someone else''s note'),
+		(2, 'Hard tasks (3 points each)', 'Task 8 — Become admin by forging a JWT token
+Task 9 — Perform an action on behalf of another user'),
 		(3, '📝 TODO Before Mortal Kombat', 'Finish the security assignment before the tournament finals
 Or Shao Kahn will expel you from the program');
 	`)

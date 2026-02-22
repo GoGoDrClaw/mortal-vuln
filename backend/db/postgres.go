@@ -74,6 +74,15 @@ func initSchema() error {
 	if err != nil {
 		return fmt.Errorf("schema: %w", err)
 	}
+	// Migrations — safe to run repeatedly
+	for _, q := range []string{
+		`ALTER TABLE task_completions ADD COLUMN IF NOT EXISTS first_blood BOOLEAN DEFAULT FALSE`,
+		`ALTER TABLE task_completions ADD COLUMN IF NOT EXISTS combo_bonus INTEGER DEFAULT 0`,
+	} {
+		if _, e := PG.Exec(q); e != nil {
+			return fmt.Errorf("migration: %w", e)
+		}
+	}
 	log.Println("✅ PostgreSQL schema ready")
 	return nil
 }

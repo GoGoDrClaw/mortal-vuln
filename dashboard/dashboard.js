@@ -1,4 +1,4 @@
-const baseDomain = window.location.hostname.replace(/^(www\.|api\.|dashboard\.|evil\.)/, '');
+const baseDomain = window.location.hostname.replace(/^(www\.|api\.|dashboard\.|top\.|evil\.)/, '');
 const port = window.location.port ? ':' + window.location.port : '';
 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
 const WS_URL = `${wsProtocol}//api.${baseDomain}${port}/ws`;
@@ -7,6 +7,29 @@ const FRONTEND_URL = `${window.location.protocol}//${baseDomain}${port}`;
 let ws = null;
 let scores = {}; // keyed by sessionId
 let audioCtx = null;
+const FEED_KEY = 'mk_feed_cache';
+const FEED_MAX = 30;
+
+function saveFeedEntry(task) {
+  let cache = [];
+  try { cache = JSON.parse(localStorage.getItem(FEED_KEY) || '[]'); } catch(_) {}
+  // avoid duplicates
+  if (!cache.find(e => e.sessionId === task.sessionId && e.taskId === task.taskId)) {
+    cache.unshift(task);
+    if (cache.length > FEED_MAX) cache = cache.slice(0, FEED_MAX);
+    localStorage.setItem(FEED_KEY, JSON.stringify(cache));
+  }
+}
+
+function loadFeedFromStorage() {
+  try {
+    const cache = JSON.parse(localStorage.getItem(FEED_KEY) || '[]');
+    if (cache.length === 0) return;
+    const activityDiv = document.getElementById('activity');
+    activityDiv.innerHTML = '';
+    cache.forEach(task => addActivityLog(task, false));
+  } catch(_) {}
+}
 
 function getAudioCtx() {
   if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -21,13 +44,13 @@ function unlockAudio(btn) {
 function makeChars() {
   const base = FRONTEND_URL + '/chars/';
   return {
-    scorpion:       { hex: '#f59e0b', rgb: '245,158,11',  img: base + 'scorpion.jpg' },
+    scorpion:       { hex: '#f59e0b', rgb: '245,158,11',  img: base + 'scorpion.gif' },
     subzero:        { hex: '#3b82f6', rgb: '59,130,246',  img: base + 'subzero.gif' },
     liukang:        { hex: '#ef4444', rgb: '239,68,68',   img: base + 'liukang.gif' },
-    kitana:         { hex: '#8b5cf6', rgb: '139,92,246',  img: base + 'kitana.jpg' },
-    raiden:         { hex: '#a78bfa', rgb: '167,139,250', img: base + 'raiden.jpg' },
+    kitana:         { hex: '#8b5cf6', rgb: '139,92,246',  img: base + 'kitana.gif' },
+    raiden:         { hex: '#a78bfa', rgb: '167,139,250', img: base + 'raiden.gif' },
     jax:            { hex: '#22c55e', rgb: '34,197,94',   img: base + 'jax.gif' },
-    mileena:        { hex: '#ec4899', rgb: '236,72,153',  img: base + 'mileena.jpg' },
+    mileena:        { hex: '#ec4899', rgb: '236,72,153',  img: base + 'mileena.gif' },
     kunglao:        { hex: '#84cc16', rgb: '132,204,22',  img: base + 'kunglao.gif' },
     sonya:          { hex: '#f472b6', rgb: '244,114,182', img: base + 'sonya.gif' },
     shangtsung:     { hex: '#f97316', rgb: '249,115,22',  img: base + 'shangtsung.gif' },
@@ -41,9 +64,10 @@ function makeChars() {
     ermac:          { hex: '#b91c1c', rgb: '185,28,28',   img: base + 'ermac.gif' },
     sheeva:         { hex: '#d97706', rgb: '217,119,6',   img: base + 'sheeva.gif' },
     stryker:        { hex: '#60a5fa', rgb: '96,165,250',  img: base + 'stryker.gif' },
-    classicsubzero: { hex: '#93c5fd', rgb: '147,197,253', img: base + 'classicsubzero.jpg' },
     smoke:          { hex: '#9ca3af', rgb: '156,163,175', img: base + 'smoke.gif' },
     noobsaibot:     { hex: '#6366f1', rgb: '99,102,241',  img: base + 'noobsaibot.gif' },
+    motaro:         { hex: '#c2410c', rgb: '194,65,12',   img: base + 'motaro.gif' },
+    shaokahn:       { hex: '#7c3aed', rgb: '124,58,237',  img: base + 'shaokahn.gif' },
   };
 }
 const CHARS = makeChars();
@@ -106,13 +130,14 @@ function handleTaskCompleted(task) {
   scores[key].completed.push(task);
   scores[key].totalScore += task.points;
   renderScoreboard();
+  saveFeedEntry(task);
   addActivityLog(task);
   playFatalitySound();
 }
 
 function renderScoreboard() {
   const container = document.getElementById('scoreboard');
-  const sorted = Object.values(scores).sort((a, b) => b.totalScore - a.totalScore);
+  const sorted = Object.values(scores).sort((a, b) => b.totalScore - a.totalScore).slice(0, 12);
 
   if (sorted.length === 0) {
     container.innerHTML = '<div style="color:#332200;font-size:8px;text-align:center;padding:40px;letter-spacing:2px;grid-column:1/-1">AWAITING WARRIORS...</div>';
@@ -185,12 +210,17 @@ function renderScoreboard() {
 function rebuildFeed(sessions) {
   const all = [];
   sessions.forEach(s => {
-    (s.completed || []).forEach(t => { all.push({ ...t, sessionId: s.sessionId }); });
+    (s.completed || []).forEach(t => { all.push({ ...t, sessionId: s.sessionId, nickname: s.nickname, character: s.character }); });
   });
   all.sort((a, b) => {
     const ta = a.timestamp || '', tb = b.timestamp || '';
     return ta < tb ? -1 : ta > tb ? 1 : a.taskId - b.taskId;
   });
+
+  // Persist to localStorage (newest first, max 30)
+  const toCache = [...all].reverse().slice(0, FEED_MAX);
+  localStorage.setItem(FEED_KEY, JSON.stringify(toCache));
+
   const activityDiv = document.getElementById('activity');
   activityDiv.innerHTML = '';
   if (all.length === 0) {
@@ -209,13 +239,17 @@ function addActivityLog(task, isNew = true) {
   const entry = document.createElement('div');
   entry.className = isNew ? 'log-entry new' : 'log-entry';
   entry.style.borderColor = c.hex;
+  const bonuses =
+    (task.firstBlood ? '<span style="color:#ef4444;font-size:6px;margin-left:4px">FIRST BLOOD</span>' : '') +
+    (task.comboBonus > 0 ? '<span style="color:#f97316;font-size:6px;margin-left:4px">COMBO x' + (task.comboBonus + 1) + '</span>' : '');
+
   entry.innerHTML =
     '<div class="log-left">' +
       '<span class="log-team" style="color:' + c.hex + '">' +
         escHtml(task.nickname) +
         '<span style="font-size:7px;color:#666;margin-left:4px">(' + task.character + ')</span>' +
       '</span>' +
-      '<span class="log-desc">COMPLETED TASK ' + task.taskId + '</span>' +
+      '<span class="log-desc">COMPLETED TASK ' + task.taskId + bonuses + '</span>' +
     '</div>' +
     '<span class="log-pts" style="color:' + c.hex + '">+' + task.points + ' PT</span>' +
     '<span class="log-time">' + ts + '</span>';
@@ -252,4 +286,5 @@ function playFatalitySound() {
   } catch (_) {}
 }
 
+loadFeedFromStorage();
 connect();

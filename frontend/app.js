@@ -5,13 +5,13 @@ let selectedChar = null;
 
 // ── All 23 UMK3 characters ─────────────────────────────────────────
 const ALL_CHARS = {
-  scorpion:       { label: 'SCORPION', hex: '#f59e0b', rgb: '245,158,11',  img: '/chars/scorpion.jpg' },
+  scorpion:       { label: 'SCORPION', hex: '#f59e0b', rgb: '245,158,11',  img: '/chars/scorpion.gif' },
   subzero:        { label: 'SUB-ZERO', hex: '#3b82f6', rgb: '59,130,246',  img: '/chars/subzero.gif' },
   liukang:        { label: 'LIU KANG', hex: '#ef4444', rgb: '239,68,68',   img: '/chars/liukang.gif' },
-  kitana:         { label: 'KITANA', hex: '#8b5cf6', rgb: '139,92,246',  img: '/chars/kitana.jpg' },
-  raiden:         { label: 'RAIDEN', hex: '#a78bfa', rgb: '167,139,250', img: '/chars/raiden.jpg' },
+  kitana:         { label: 'KITANA', hex: '#8b5cf6', rgb: '139,92,246',  img: '/chars/kitana.gif' },
+  raiden:         { label: 'RAIDEN', hex: '#a78bfa', rgb: '167,139,250', img: '/chars/raiden.gif' },
   jax:            { label: 'JAX', hex: '#22c55e', rgb: '34,197,94',   img: '/chars/jax.gif' },
-  mileena:        { label: 'MILEENA', hex: '#ec4899', rgb: '236,72,153',  img: '/chars/mileena.jpg' },
+  mileena:        { label: 'MILEENA', hex: '#ec4899', rgb: '236,72,153',  img: '/chars/mileena.gif' },
   kunglao:        { label: 'KUNG LAO', hex: '#84cc16', rgb: '132,204,22',  img: '/chars/kunglao.gif' },
   sonya:          { label: 'SONYA', hex: '#f472b6', rgb: '244,114,182', img: '/chars/sonya.gif' },
   shangtsung:     { label: 'SHANG TSUNG', hex: '#f97316', rgb: '249,115,22',  img: '/chars/shangtsung.gif' },
@@ -25,9 +25,10 @@ const ALL_CHARS = {
   ermac:          { label: 'ERMAC', hex: '#b91c1c', rgb: '185,28,28',   img: '/chars/ermac.gif' },
   sheeva:         { label: 'SHEEVA', hex: '#d97706', rgb: '217,119,6',   img: '/chars/sheeva.gif' },
   stryker:        { label: 'STRYKER', hex: '#60a5fa', rgb: '96,165,250',  img: '/chars/stryker.gif' },
-  classicsubzero: { label: 'CLASSIC SUB-ZERO', hex: '#93c5fd', rgb: '147,197,253', img: '/chars/classicsubzero.jpg' },
   smoke:          { label: 'SMOKE', hex: '#9ca3af', rgb: '156,163,175', img: '/chars/smoke.gif' },
   noobsaibot:     { label: 'NOOB SAIBOT', hex: '#6366f1', rgb: '99,102,241',  img: '/chars/noobsaibot.gif' },
+  motaro:         { label: 'MOTARO',      hex: '#c2410c', rgb: '194,65,12',   img: '/chars/motaro.gif' },
+  shaokahn:       { label: 'SHAO KAHN',  hex: '#7c3aed', rgb: '124,58,237',  img: '/chars/shaokahn.gif' },
 };
 
 const CHARS_LIST = Object.keys(ALL_CHARS);
@@ -81,27 +82,28 @@ function show(id) {
 async function init() {
   renderCharSelect();
 
-  // Check if valid session exists
+  // 1. Valid session cookie → check with server
   const sid = getSessionID();
   if (sid) {
     try {
       const res = await fetch(`${API_URL}/api/session/check`, { credentials: 'include' });
       if (res.ok) {
         SESSION = await res.json();
-        // Try restoring JWT
         const saved = localStorage.getItem('mk_token');
         if (saved) {
           try {
             const payload = JSON.parse(atob(saved.split('.')[1]));
-            TOKEN = saved;
-            document.getElementById('username-display').textContent = payload.username + ' (' + payload.role + ')';
-            document.getElementById('app-team-indicator').innerHTML = charBadge(SESSION.character);
-            show('app-section');
-            loadNotes();
-            return;
-          } catch (e) {
-            localStorage.removeItem('mk_token');
-          }
+            // Check token not expired
+            if (!payload.exp || payload.exp * 1000 > Date.now()) {
+              TOKEN = saved;
+              document.getElementById('username-display').textContent = payload.username + ' (' + payload.role + ')';
+              document.getElementById('app-team-indicator').innerHTML = charBadge(SESSION.character);
+              show('app-section');
+              loadNotes();
+              return;
+            }
+          } catch (e) {}
+          localStorage.removeItem('mk_token');
         }
         showLogin();
         return;
@@ -109,6 +111,40 @@ async function init() {
     } catch (e) {}
   }
 
+  // 2. No valid cookie, but save code in localStorage → auto-restore
+  const saveCode = localStorage.getItem('mk_save_code');
+  if (saveCode) {
+    try {
+      const res = await fetch(`${API_URL}/api/session/restore`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ saveCode })
+      });
+      if (res.ok) {
+        SESSION = await res.json();
+        const saved = localStorage.getItem('mk_token');
+        if (saved) {
+          try {
+            const payload = JSON.parse(atob(saved.split('.')[1]));
+            if (!payload.exp || payload.exp * 1000 > Date.now()) {
+              TOKEN = saved;
+              document.getElementById('username-display').textContent = payload.username + ' (' + payload.role + ')';
+              document.getElementById('app-team-indicator').innerHTML = charBadge(SESSION.character);
+              show('app-section');
+              loadNotes();
+              return;
+            }
+          } catch (e) {}
+          localStorage.removeItem('mk_token');
+        }
+        showLogin();
+        return;
+      }
+    } catch (e) {}
+  }
+
+  // 3. Nothing → start screen
   show('start-section');
 }
 
@@ -124,7 +160,8 @@ function startNewGame() {
 }
 
 function startContinue() {
-  document.getElementById('restore-code').value = '';
+  const saved = localStorage.getItem('mk_save_code') || '';
+  document.getElementById('restore-code').value = saved;
   document.getElementById('restore-error').classList.add('hidden');
   show('restore-section');
 }
@@ -161,7 +198,7 @@ async function doRestore() {
 
   document.getElementById('savecode-display').textContent = d.saveCode;
   document.getElementById('restore-info').textContent =
-    `✅ Welcome back, ${d.nickname}! ${d.tasksCompleted} tasks completed, ${d.totalScore} pts.`;
+    ` Welcome back, ${d.nickname}! ${d.tasksCompleted} tasks completed, ${d.totalScore} pts.`;
   document.getElementById('restore-info').classList.remove('hidden');
 
   show('savecode-section');
@@ -231,15 +268,18 @@ async function doNewGame() {
     return;
   }
 
-  // Fight animation
+  // Fight animation — show for at least 2s regardless of API speed
   document.getElementById('mk-fight-overlay').classList.remove('hidden');
 
-  const res = await fetch(`${API_URL}/api/session/new`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    credentials: 'include',
-    body: JSON.stringify({ nickname, character: selectedChar })
-  });
+  const [res] = await Promise.all([
+    fetch(`${API_URL}/api/session/new`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ nickname, character: selectedChar })
+    }),
+    new Promise(r => setTimeout(r, 2000))
+  ]);
   const d = await res.json();
 
   document.getElementById('mk-fight-overlay').classList.add('hidden');
@@ -294,8 +334,6 @@ async function doLogin() {
   TOKEN = d.token;
   localStorage.setItem('mk_token', TOKEN);
 
-  document.getElementById('login-token').classList.remove('hidden');
-  document.getElementById('token-text').textContent = TOKEN;
 
   const payload = JSON.parse(atob(TOKEN.split('.')[1]));
   document.getElementById('username-display').textContent = payload.username + ' (' + payload.role + ')';
@@ -306,20 +344,28 @@ async function doLogin() {
   loadNotes();
 }
 
+function goToMainMenu() {
+  TOKEN = null;
+  SESSION = null;
+  localStorage.removeItem('mk_token');
+  // Keep session_id cookie and mk_save_code intact
+  show('start-section');
+}
+
 function doLogout() {
   TOKEN = null;
   SESSION = null;
   localStorage.removeItem('mk_token');
-  // Clear cookies
+  // Clear cookies but keep mk_save_code for auto-restore
   document.cookie = 'session_id=;Max-Age=0;path=/';
   document.cookie = 'token=;Max-Age=0;path=/';
-  show('start-section');
+  init();
 }
 
 async function resetDB() {
   if (!confirm('Reset your database to its initial state?')) return;
   await fetch(`${API_URL}/api/reset`, { method: 'POST', credentials: 'include' });
-  alert('✅ Database reset!');
+  alert(' Database reset!');
   loadNotes();
 }
 
@@ -351,9 +397,9 @@ async function loadNotes() {
       '<h3>' + n.title + '</h3>' +
       '<p id="note-content-' + n.id + '">' + n.content.slice(0, 40) + (n.content.length > 40 ? '…' : '') + '</p>' +
       '<div class="note-meta">' +
-        '▸ ID: ' + n.id + ' &nbsp;|&nbsp; ' + (n.created || '') +
-        ' <button class="btn-primary" style="margin-left:8px;padding:3px 8px;" onclick="expandNote(' + n.id + ')">▶ EXPAND</button>' +
-        ' <button class="btn-danger" style="margin-left:4px;padding:3px 8px;" onclick="deleteNote(' + n.id + ')">💀 DESTROY</button>' +
+        'ID: ' + n.id + ' &nbsp;|&nbsp; ' + (n.created || '') +
+        ' <button class="btn-primary" style="margin-left:8px;padding:3px 8px;" onclick="expandNote(' + n.id + ')">EXPAND</button>' +
+        ' <button class="btn-danger" style="margin-left:4px;padding:3px 8px;" onclick="deleteNote(' + n.id + ')">DESTROY</button>' +
       '</div>' +
     '</div>'
   ).join('');
@@ -395,6 +441,57 @@ async function expandNote(id) {
   const contentEl = document.getElementById('note-content-' + id);
   if (contentEl) contentEl.innerHTML = d.content;
   if (btn) btn.style.display = 'none';
+}
+
+// ── Victory screen ────────────────────────────────────────────────
+const MAIN_TASKS = [0,1,2,3,4,5,6,7,8,9];
+
+function showVictory() {
+  const c = ALL_CHARS[SESSION?.character] || {};
+  const overlay = document.getElementById('victory-overlay');
+  document.getElementById('vic-portrait').src = c.img || '';
+  document.getElementById('vic-nickname').textContent = SESSION?.nickname || '';
+  overlay.classList.remove('hidden');
+}
+
+// ── Progress ───────────────────────────────────────────────────────
+async function loadProgress() {
+  const el = document.getElementById('progress-list');
+  el.innerHTML = '<p style="color:#64748b;font-size:9px">LOADING...</p>';
+
+  const res = await fetch(`${API_URL}/api/session/progress`, { credentials: 'include' });
+  if (!res.ok) { el.innerHTML = '<p style="color:#ef4444">Failed to load</p>'; return; }
+  const d = await res.json();
+
+  const completed = d.completed || [];
+  if (completed.length === 0) {
+    el.innerHTML = '<p style="color:#64748b;font-size:9px;letter-spacing:2px">NO FATALITIES YET</p>';
+    return;
+  }
+
+  const c = ALL_CHARS[SESSION?.character] || {};
+  const doneIds = new Set(completed.map(t => t.taskId));
+  const allDone = MAIN_TASKS.every(id => doneIds.has(id));
+
+  el.innerHTML =
+    `<div style="margin-bottom:10px;font-size:9px;letter-spacing:2px;color:${c.hex||'#ffdd00'}">
+       SCORE: ${d.totalScore} PTS &nbsp;|&nbsp; ${completed.length} TASK${completed.length!==1?'S':''} COMPLETED
+     </div>` +
+    completed.map(t =>
+      `<div class="note" style="border-left:3px solid ${c.hex||'#ffdd00'};margin-bottom:6px;padding:8px 10px">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <span style="color:${c.hex||'#ffdd00'};font-size:10px;letter-spacing:1px">TASK ${t.taskId}${t.taskName ? ' — ' + t.taskName : ''}</span>
+          <span style="font-size:10px;font-weight:bold">
+            <span style="color:#22c55e">+${t.points} PT</span>
+            ${t.firstBlood ? '<span style="color:#ef4444;margin-left:6px;font-size:8px">FIRST BLOOD</span>' : ''}
+            ${t.comboBonus > 0 ? `<span style="color:#f97316;margin-left:6px;font-size:8px">COMBO x${t.comboBonus + 1}</span>` : ''}
+          </span>
+        </div>
+        <div style="color:#64748b;font-size:8px;margin-top:4px;letter-spacing:1px">${t.timestamp || '—'}</div>
+      </div>`
+    ).join('');
+
+  if (allDone) setTimeout(showVictory, 400);
 }
 
 // ── Keyboard navigation (char select) ─────────────────────────────

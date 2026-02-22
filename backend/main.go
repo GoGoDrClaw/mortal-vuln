@@ -43,8 +43,9 @@ func route(mux *http.ServeMux) {
 	// Public — session management
 	mux.HandleFunc("/api/session/new",     middleware.CORS(handlers.NewSession))
 	mux.HandleFunc("/api/session/restore", middleware.CORS(handlers.RestoreSession))
-	mux.HandleFunc("/api/session/check",   middleware.CORS(handlers.CheckSession))
-	mux.HandleFunc("/api/characters",      middleware.CORS(handlers.GetCharacters))
+	mux.HandleFunc("/api/session/check",    middleware.CORS(handlers.CheckSession))
+	mux.HandleFunc("/api/session/progress", middleware.CORS(handlers.SessionProgress))
+	mux.HandleFunc("/api/characters",       middleware.CORS(handlers.GetCharacters))
 
 	// Public — scores & health
 	mux.HandleFunc("/api/health",  middleware.CORS(handlers.Health))
