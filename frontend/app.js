@@ -19,7 +19,7 @@ const ALL_CHARS = {
   nightwolf:      { label: 'NIGHTWOLF',         emoji: '🐺', hex: '#10b981', rgb: '16,185,129',  img: '/chars/nightwolf.gif' },
   cyrax:          { label: 'CYRAX',             emoji: '🤖', hex: '#eab308', rgb: '234,179,8',   img: '/chars/cyrax.gif' },
   sektor:         { label: 'SEKTOR',            emoji: '🚀', hex: '#dc2626', rgb: '220,38,38',   img: '/chars/sektor.gif' },
-  kabal:          { label: 'KABAL',             emoji: '⚔️',  hex: '#64748b', rgb: '100,116,139', img: '/chars/kabal.gif' },
+  kabal:          { label: 'KABAL',             emoji: '🗡️',  hex: '#64748b', rgb: '100,116,139', img: '/chars/kabal.gif' },
   jade:           { label: 'JADE',              emoji: '💚', hex: '#4ade80', rgb: '74,222,128',  img: '/chars/jade.gif' },
   sindel:         { label: 'SINDEL',            emoji: '👑', hex: '#c026d3', rgb: '192,38,211',  img: '/chars/sindel.gif' },
   ermac:          { label: 'ERMAC',             emoji: '👻', hex: '#b91c1c', rgb: '185,28,28',   img: '/chars/ermac.gif' },

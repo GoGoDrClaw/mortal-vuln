@@ -35,7 +35,7 @@ function makeChars() {
     nightwolf:      { emoji: '🐺', hex: '#10b981', rgb: '16,185,129',  img: base + 'nightwolf.gif' },
     cyrax:          { emoji: '🤖', hex: '#eab308', rgb: '234,179,8',   img: base + 'cyrax.gif' },
     sektor:         { emoji: '🚀', hex: '#dc2626', rgb: '220,38,38',   img: base + 'sektor.gif' },
-    kabal:          { emoji: '⚔️',  hex: '#64748b', rgb: '100,116,139', img: base + 'kabal.gif' },
+    kabal:          { emoji: '🗡️',  hex: '#64748b', rgb: '100,116,139', img: base + 'kabal.gif' },
     jade:           { emoji: '💚', hex: '#4ade80', rgb: '74,222,128',  img: base + 'jade.gif' },
     sindel:         { emoji: '👑', hex: '#c026d3', rgb: '192,38,211',  img: base + 'sindel.gif' },
     ermac:          { emoji: '👻', hex: '#b91c1c', rgb: '185,28,28',   img: base + 'ermac.gif' },
@@ -51,7 +51,7 @@ const CHARS = makeChars();
 const MAX_SCORE = 21;
 
 function charInfo(character) {
-  return CHARS[character] || { emoji: '⚔', hex: '#ffdd00', rgb: '255,221,0', img: '' };
+  return CHARS[character] || { emoji: '🗡️', hex: '#ffdd00', rgb: '255,221,0', img: '' };
 }
 
 function connect() {
