@@ -240,7 +240,6 @@ function addActivityLog(task, isNew = true) {
   entry.className = isNew ? 'log-entry new' : 'log-entry';
   entry.style.borderColor = c.hex;
   const bonuses =
-    (task.firstBlood ? '<span style="color:#ef4444;font-size:6px;margin-left:4px">FIRST BLOOD</span>' : '') +
     (task.comboBonus > 0 ? '<span style="color:#f97316;font-size:6px;margin-left:4px">COMBO x' + (task.comboBonus + 1) + '</span>' : '');
 
   entry.innerHTML =

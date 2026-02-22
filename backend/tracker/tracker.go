@@ -24,8 +24,7 @@ type TaskProgress struct {
 	TaskID     int    `json:"taskId"`
 	TaskName   string `json:"taskName"`
 	BasePoints int    `json:"basePoints"`
-	Points     int    `json:"points"` // total: base + firstBlood + combo
-	FirstBlood bool   `json:"firstBlood"`
+	Points     int    `json:"points"` // total: base + combo
 	ComboBonus int    `json:"comboBonus"`
 	Timestamp  string `json:"timestamp"`
 	Details    string `json:"details"`
@@ -86,11 +85,6 @@ func CompleteTask(sessionID string, taskID int, details string) {
 		return
 	}
 
-	// First Blood: are we the first to solve this task across all sessions?
-	var globalCount int
-	db.PG.QueryRow(`SELECT COUNT(*) FROM task_completions WHERE task_id = $1`, taskID).Scan(&globalCount)
-	firstBlood := globalCount == 0
-
 	// Combo: check last completion time for this session
 	comboBonus := 0
 	var lastCombo int
@@ -103,17 +97,13 @@ func CompleteTask(sessionID string, taskID int, details string) {
 		comboBonus = lastCombo + 1
 	}
 
-	totalPoints := basePoints
-	if firstBlood {
-		totalPoints++
-	}
-	totalPoints += comboBonus
+	totalPoints := basePoints + comboBonus
 
 	_, err = db.PG.Exec(`
-		INSERT INTO task_completions (session_id, task_id, task_name, points, details, first_blood, combo_bonus)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		INSERT INTO task_completions (session_id, task_id, task_name, points, details, combo_bonus)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT DO NOTHING
-	`, sessionID, taskID, name, totalPoints, details, firstBlood, comboBonus)
+	`, sessionID, taskID, name, totalPoints, details, comboBonus)
 	if err != nil {
 		log.Printf("⚠️ failed to save task %d for session %s: %v", taskID, sessionID, err)
 		return
@@ -134,13 +124,12 @@ func CompleteTask(sessionID string, taskID int, details string) {
 		TaskName:   name,
 		BasePoints: basePoints,
 		Points:     totalPoints,
-		FirstBlood: firstBlood,
 		ComboBonus: comboBonus,
 		Timestamp:  time.Now().Format("02 Jan 15:04:05"),
 		Details:    details,
 	}
 
-	log.Printf("✅ %s completed task %d +%d pts (fb=%v combo=%d)", nick, taskID, totalPoints, firstBlood, comboBonus)
+	log.Printf("✅ %s completed task %d +%d pts (combo=%d)", nick, taskID, totalPoints, comboBonus)
 	broadcast <- task
 }
 
@@ -164,7 +153,7 @@ func GetSessionScore(sessionID string) SessionScore {
 
 	rows, err := db.PG.Query(`
 		SELECT task_id, task_name, points, details, completed_at,
-		       COALESCE(first_blood, false), COALESCE(combo_bonus, 0)
+		       COALESCE(combo_bonus, 0)
 		FROM task_completions WHERE session_id = $1
 		ORDER BY completed_at
 	`, sessionID)
@@ -176,7 +165,7 @@ func GetSessionScore(sessionID string) SessionScore {
 	for rows.Next() {
 		var t TaskProgress
 		var ts time.Time
-		rows.Scan(&t.TaskID, &t.TaskName, &t.Points, &t.Details, &ts, &t.FirstBlood, &t.ComboBonus)
+		rows.Scan(&t.TaskID, &t.TaskName, &t.Points, &t.Details, &ts, &t.ComboBonus)
 		t.BasePoints = taskPoints[t.TaskID]
 		t.Timestamp = ts.Format("02 Jan 15:04:05")
 		t.SessionID = sessionID
