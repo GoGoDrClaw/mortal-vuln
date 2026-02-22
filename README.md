@@ -5,7 +5,7 @@ An educational web application with intentional vulnerabilities for hands-on sec
 ## Requirements
 
 - Docker
-- Docker Compose
+- Docker Compose (v2)
 
 ## Quick Start
 
@@ -14,62 +14,75 @@ git clone <repo-url>
 cd test-your-might
 
 cp .env.example .env
-# Edit .env if needed
+# Edit .env if needed (at minimum change JWT_SECRET and POSTGRES_PASSWORD)
 
-docker-compose up -d
+docker compose up -d
 ```
 
 Add to `/etc/hosts` (Linux/Mac) or `C:\Windows\System32\drivers\etc\hosts` (Windows):
 
 ```
-127.0.0.1 ctf.local api.ctf.local dashboard.ctf.local evil.ctf.local
+127.0.0.1 ctf.local api.ctf.local dashboard.ctf.local
 ```
 
-| Service   | URL                                  |
-|-----------|--------------------------------------|
-| App       | https://ctf.local           |
-| API       | https://api.ctf.local       |
-| Dashboard | https://dashboard.ctf.local |
-| Evil Site | https://evil.ctf.local      |
+| Service   | URL                                   |
+|-----------|---------------------------------------|
+| App       | https://ctf.local                     |
+| API       | https://api.ctf.local                 |
+| Dashboard | https://dashboard.ctf.local           |
 
 ## Configuration
 
-```bash
-# .env
-DOMAIN=ctf.local   # or IP / your domain
-HOST_PORT=80
-JWT_SECRET=secret123        # change in production
-TEAM_COUNT=6                # 2–22 teams
+```env
+DOMAIN=ctf.local            # or IP / your domain
+JWT_SECRET=secret123        # change before running!
+POSTGRES_PASSWORD=ctfpassword
+RATE_LIMIT_RPS=20           # requests/sec per IP (DDoS protection)
+RATE_LIMIT_BURST=40
 ```
 
-Default credentials: `alice / password123`, `bob / qwerty`
+## How it works
 
-## Database Management
+Each player creates their own session:
 
-Team databases are stored in `data/` and persist across restarts. Progress tracking is isolated in `data/progress.db` — even if a team resets their DB, their dashboard score is preserved.
+1. Open the app → **NEW GAME**: choose a fighter, enter a nickname
+2. A **save code** is shown (format `XXXX-XXXX`) — write it down
+3. On another device or after cookie loss → **CONTINUE**: enter your save code
+
+Each session has an isolated SQLite database for CTF tasks (SQL injection stays contained). Progress (completed tasks, score) is persisted in PostgreSQL.
+
+## Default CTF credentials
+
+Each player's database is seeded with three users. Finding their passwords is part of the challenge.
+
+## Data
+
+- **PostgreSQL**: player sessions and task completions (persists across restarts)
+- **SQLite** (`data/sessions/<uuid>.db`): per-player CTF database (users, notes)
 
 ```bash
-# Reset one team's data (users + notes only)
-rm data/scorpion.db && docker-compose restart backend
+# Reset one player's CTF database via the app UI (⟳ RESET REALM button)
+# or via API:
+curl -X POST https://api.ctf.local/api/reset -b "session_id=<uuid>"
 
-# Reset one team's progress on the dashboard
-sqlite3 data/progress.db "DELETE FROM completed_tasks WHERE team='scorpion';"
-
-# Full reset (all teams)
-rm data/*.db && docker-compose restart backend
+# Wipe all sessions and progress (full reset)
+docker compose down -v   # removes postgres_data volume
+rm -rf data/sessions/
+docker compose up -d
 ```
 
 ## Instructor Dashboard
 
-Connect to `https://dashboard.ctf.local` to monitor team progress in real time via WebSocket.
+Connect to `https://dashboard.ctf.local` to monitor player progress in real time via WebSocket. Shows nickname, character, score, and live task feed.
 
 ## Rebuild / Logs
 
 ```bash
-docker-compose up -d --build   # rebuild after code changes
-docker-compose logs -f         # all services
-docker-compose logs -f backend # backend only
-docker-compose down            # stop
+docker compose up -d --build   # rebuild after code changes
+docker compose logs -f         # all services
+docker compose logs -f backend # backend only
+docker compose down            # stop
+docker compose down -v         # stop + remove volumes (full wipe)
 ```
 
 ## Warning
