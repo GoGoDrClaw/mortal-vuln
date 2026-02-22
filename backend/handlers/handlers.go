@@ -514,6 +514,15 @@ Task 6 — Perform an XSS attack
 Task 7 — Delete someone else''s note'),
 		(2, 'Hard tasks (3 points each)', 'Task 8 — Become admin by forging a JWT token
 Task 9 — Perform an action on behalf of another user'),
+		(2, 'Combo bonus', 'Solve tasks back-to-back to earn extra points.
+
+If you complete a task within 5 minutes of your previous one, you get a COMBO bonus:
+  +1 pt for 2nd task in a row
+  +2 pt for 3rd task in a row
+  +3 pt for 4th task in a row
+  ...and so on.
+
+The timer resets if you take longer than 5 minutes between tasks.'),
 		(3, '📝 TODO Before Mortal Kombat', 'Finish the security assignment before the tournament finals
 Or Shao Kahn will expel you from the program');
 	`)
