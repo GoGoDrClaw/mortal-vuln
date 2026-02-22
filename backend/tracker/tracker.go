@@ -85,16 +85,15 @@ func CompleteTask(sessionID string, taskID int, details string) {
 		return
 	}
 
-	// Combo: check last completion time for this session
+	// Combo: +1 if previous task was completed within 5 minutes
 	comboBonus := 0
-	var lastCombo int
 	var lastAt time.Time
 	err := db.PG.QueryRow(`
-		SELECT combo_bonus, completed_at FROM task_completions
+		SELECT completed_at FROM task_completions
 		WHERE session_id = $1 ORDER BY completed_at DESC LIMIT 1
-	`, sessionID).Scan(&lastCombo, &lastAt)
+	`, sessionID).Scan(&lastAt)
 	if err == nil && time.Since(lastAt) <= 5*time.Minute {
-		comboBonus = lastCombo + 1
+		comboBonus = 1
 	}
 
 	totalPoints := basePoints + comboBonus

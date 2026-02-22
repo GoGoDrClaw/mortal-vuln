@@ -516,11 +516,9 @@ Task 7 — Delete someone else''s note'),
 Task 9 — Perform an action on behalf of another user'),
 		(2, 'Combo bonus', 'Solve tasks back-to-back to earn extra points.
 
-If you complete a task within 5 minutes of your previous one, you get a COMBO bonus:
-  +1 pt for 2nd task in a row
-  +2 pt for 3rd task in a row
-  +3 pt for 4th task in a row
-  ...and so on.
+If you complete a task within 5 minutes of your previous one, you get +1 bonus point on top of the base score for that task.
+
+Maximum combo bonus: +10 pts (one per task, starting from the 2nd).
 
 The timer resets if you take longer than 5 minutes between tasks.'),
 		(3, '📝 TODO Before Mortal Kombat', 'Finish the security assignment before the tournament finals

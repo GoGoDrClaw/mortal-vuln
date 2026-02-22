@@ -206,7 +206,7 @@ function addActivityLog(task, isNew = true) {
   entry.className = isNew ? 'log-entry new' : 'log-entry';
   entry.style.borderColor = c.hex;
   const bonuses =
-    (task.comboBonus > 0 ? '<span style="color:#f97316;font-size:6px;margin-left:4px">COMBO x' + (task.comboBonus + 1) + '</span>' : '');
+    (task.comboBonus > 0 ? '<span style="color:#f97316;font-size:6px;margin-left:4px">COMBO +1</span>' : '');
 
   entry.innerHTML =
     '<div class="log-left">' +

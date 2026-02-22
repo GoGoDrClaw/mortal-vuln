@@ -483,7 +483,7 @@ async function loadProgress() {
           <span style="color:${c.hex||'#ffdd00'};font-size:10px;letter-spacing:1px">TASK ${t.taskId}${t.taskName ? ' — ' + t.taskName : ''}</span>
           <span style="font-size:10px;font-weight:bold">
             <span style="color:#22c55e">+${t.points} PT</span>
-            ${t.comboBonus > 0 ? `<span style="color:#f97316;margin-left:6px;font-size:8px">COMBO x${t.comboBonus + 1}</span>` : ''}
+            ${t.comboBonus > 0 ? '<span style="color:#f97316;margin-left:6px;font-size:8px">COMBO +1</span>' : ''}
           </span>
         </div>
         <div style="color:#64748b;font-size:8px;margin-top:4px;letter-spacing:1px">${t.timestamp || '—'}</div>
