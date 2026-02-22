@@ -50,6 +50,7 @@ func route(mux *http.ServeMux) {
 	// Public — scores & health
 	mux.HandleFunc("/api/health",  middleware.CORS(handlers.Health))
 	mux.HandleFunc("/api/scores",  middleware.CORS(handlers.GetScores))
+	mux.HandleFunc("/api/feed",    middleware.CORS(handlers.GetFeed))
 
 	// Public — flag submission (requires session cookie)
 	mux.HandleFunc("/api/flag", middleware.CORS(middleware.RequireSession(func(w http.ResponseWriter, r *http.Request) {

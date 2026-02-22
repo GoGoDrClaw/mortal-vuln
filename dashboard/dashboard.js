@@ -7,27 +7,18 @@ const FRONTEND_URL = `${window.location.protocol}//${baseDomain}${port}`;
 let ws = null;
 let scores = {}; // keyed by sessionId
 let audioCtx = null;
-const FEED_KEY = 'mk_feed_cache';
-const FEED_MAX = 30;
+const API_URL = `${window.location.protocol}//api.${baseDomain}${port}`;
 
-function saveFeedEntry(task) {
-  let cache = [];
-  try { cache = JSON.parse(localStorage.getItem(FEED_KEY) || '[]'); } catch(_) {}
-  // avoid duplicates
-  if (!cache.find(e => e.sessionId === task.sessionId && e.taskId === task.taskId)) {
-    cache.unshift(task);
-    if (cache.length > FEED_MAX) cache = cache.slice(0, FEED_MAX);
-    localStorage.setItem(FEED_KEY, JSON.stringify(cache));
-  }
-}
-
-function loadFeedFromStorage() {
+async function loadFeedFromServer() {
   try {
-    const cache = JSON.parse(localStorage.getItem(FEED_KEY) || '[]');
-    if (cache.length === 0) return;
+    const r = await fetch(`${API_URL}/api/feed`);
+    if (!r.ok) return;
+    const feed = await r.json();
+    if (!Array.isArray(feed) || feed.length === 0) return;
     const activityDiv = document.getElementById('activity');
     activityDiv.innerHTML = '';
-    cache.forEach(task => addActivityLog(task, false));
+    // feed is newest-first from server
+    feed.forEach(task => addActivityLog(task, false));
   } catch(_) {}
 }
 
@@ -93,7 +84,6 @@ function connect() {
       scores = {};
       data.scores.forEach(s => { scores[s.sessionId] = s; });
       renderScoreboard();
-      rebuildFeed(data.scores);
     } else if (data.type === 'task_completed') {
       handleTaskCompleted(data.task);
     }
@@ -130,7 +120,6 @@ function handleTaskCompleted(task) {
   scores[key].completed.push(task);
   scores[key].totalScore += task.points;
   renderScoreboard();
-  saveFeedEntry(task);
   addActivityLog(task);
   playFatalitySound();
 }
@@ -207,29 +196,6 @@ function renderScoreboard() {
   });
 }
 
-function rebuildFeed(sessions) {
-  const all = [];
-  sessions.forEach(s => {
-    (s.completed || []).forEach(t => { all.push({ ...t, sessionId: s.sessionId, nickname: s.nickname, character: s.character }); });
-  });
-  all.sort((a, b) => {
-    const ta = a.timestamp || '', tb = b.timestamp || '';
-    return ta < tb ? -1 : ta > tb ? 1 : a.taskId - b.taskId;
-  });
-
-  // Persist to localStorage (newest first, max 30)
-  const toCache = [...all].reverse().slice(0, FEED_MAX);
-  localStorage.setItem(FEED_KEY, JSON.stringify(toCache));
-
-  const activityDiv = document.getElementById('activity');
-  activityDiv.innerHTML = '';
-  if (all.length === 0) {
-    activityDiv.innerHTML = '<div class="mk-empty-feed">AWAITING KOMBAT...</div>';
-    return;
-  }
-  all.forEach(task => addActivityLog(task, false));
-}
-
 function addActivityLog(task, isNew = true) {
   const c = charInfo(task.character);
   const ts = task.timestamp
@@ -285,5 +251,5 @@ function playFatalitySound() {
   } catch (_) {}
 }
 
-loadFeedFromStorage();
+loadFeedFromServer();
 connect();

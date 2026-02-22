@@ -460,6 +460,10 @@ func GetScores(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, 200, tracker.GetAllScores())
 }
 
+func GetFeed(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, 200, tracker.GetRecentFeed(30))
+}
+
 func seedDB(d *sql.DB) {
 	if d == nil {
 		return

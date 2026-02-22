@@ -177,6 +177,41 @@ func GetSessionScore(sessionID string) SessionScore {
 	return score
 }
 
+// GetRecentFeed returns the last n task completions across all sessions.
+func GetRecentFeed(n int) []TaskProgress {
+	if db.PG == nil {
+		return []TaskProgress{}
+	}
+	rows, err := db.PG.Query(`
+		SELECT tc.session_id, s.nickname, s.character,
+		       tc.task_id, tc.task_name, tc.points, tc.details, tc.completed_at,
+		       COALESCE(tc.combo_bonus, 0)
+		FROM task_completions tc
+		JOIN sessions s ON s.id = tc.session_id
+		ORDER BY tc.completed_at DESC
+		LIMIT $1
+	`, n)
+	if err != nil {
+		return []TaskProgress{}
+	}
+	defer rows.Close()
+
+	var feed []TaskProgress
+	for rows.Next() {
+		var t TaskProgress
+		var ts time.Time
+		rows.Scan(
+			&t.SessionID, &t.Nickname, &t.Character,
+			&t.TaskID, &t.TaskName, &t.Points, &t.Details, &ts,
+			&t.ComboBonus,
+		)
+		t.BasePoints = taskPoints[t.TaskID]
+		t.Timestamp = ts.Format("02 Jan 15:04:05")
+		feed = append(feed, t)
+	}
+	return feed
+}
+
 // GetAllScores returns the leaderboard (all sessions, ordered by score).
 func GetAllScores() []SessionScore {
 	if db.PG == nil {
