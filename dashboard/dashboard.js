@@ -21,29 +21,29 @@ function unlockAudio(btn) {
 function makeChars() {
   const base = FRONTEND_URL + '/chars/';
   return {
-    scorpion:       { emoji: '🦂', hex: '#f59e0b', rgb: '245,158,11',  img: base + 'scorpion.jpg' },
-    subzero:        { emoji: '❄️',  hex: '#3b82f6', rgb: '59,130,246',  img: base + 'subzero.gif' },
-    liukang:        { emoji: '🔥', hex: '#ef4444', rgb: '239,68,68',   img: base + 'liukang.gif' },
-    kitana:         { emoji: '👸', hex: '#8b5cf6', rgb: '139,92,246',  img: base + 'kitana.jpg' },
-    raiden:         { emoji: '⚡', hex: '#a78bfa', rgb: '167,139,250', img: base + 'raiden.jpg' },
-    jax:            { emoji: '💪', hex: '#22c55e', rgb: '34,197,94',   img: base + 'jax.gif' },
-    mileena:        { emoji: '🎭', hex: '#ec4899', rgb: '236,72,153',  img: base + 'mileena.jpg' },
-    kunglao:        { emoji: '🎩', hex: '#84cc16', rgb: '132,204,22',  img: base + 'kunglao.gif' },
-    sonya:          { emoji: '🎖️', hex: '#f472b6', rgb: '244,114,182', img: base + 'sonya.gif' },
-    shangtsung:     { emoji: '💀', hex: '#f97316', rgb: '249,115,22',  img: base + 'shangtsung.gif' },
-    kano:           { emoji: '🔺', hex: '#78716c', rgb: '120,113,108', img: base + 'kano.gif' },
-    nightwolf:      { emoji: '🐺', hex: '#10b981', rgb: '16,185,129',  img: base + 'nightwolf.gif' },
-    cyrax:          { emoji: '🤖', hex: '#eab308', rgb: '234,179,8',   img: base + 'cyrax.gif' },
-    sektor:         { emoji: '🚀', hex: '#dc2626', rgb: '220,38,38',   img: base + 'sektor.gif' },
-    kabal:          { emoji: '🗡️',  hex: '#64748b', rgb: '100,116,139', img: base + 'kabal.gif' },
-    jade:           { emoji: '💚', hex: '#4ade80', rgb: '74,222,128',  img: base + 'jade.gif' },
-    sindel:         { emoji: '👑', hex: '#c026d3', rgb: '192,38,211',  img: base + 'sindel.gif' },
-    ermac:          { emoji: '👻', hex: '#b91c1c', rgb: '185,28,28',   img: base + 'ermac.gif' },
-    sheeva:         { emoji: '👊', hex: '#d97706', rgb: '217,119,6',   img: base + 'sheeva.gif' },
-    stryker:        { emoji: '🚔', hex: '#60a5fa', rgb: '96,165,250',  img: base + 'stryker.gif' },
-    classicsubzero: { emoji: '🧊', hex: '#93c5fd', rgb: '147,197,253', img: base + 'classicsubzero.jpg' },
-    smoke:          { emoji: '💨', hex: '#9ca3af', rgb: '156,163,175', img: base + 'smoke.gif' },
-    noobsaibot:     { emoji: '🌑', hex: '#6366f1', rgb: '99,102,241',  img: base + 'noobsaibot.gif' },
+    scorpion:       { hex: '#f59e0b', rgb: '245,158,11',  img: base + 'scorpion.jpg' },
+    subzero:        { hex: '#3b82f6', rgb: '59,130,246',  img: base + 'subzero.gif' },
+    liukang:        { hex: '#ef4444', rgb: '239,68,68',   img: base + 'liukang.gif' },
+    kitana:         { hex: '#8b5cf6', rgb: '139,92,246',  img: base + 'kitana.jpg' },
+    raiden:         { hex: '#a78bfa', rgb: '167,139,250', img: base + 'raiden.jpg' },
+    jax:            { hex: '#22c55e', rgb: '34,197,94',   img: base + 'jax.gif' },
+    mileena:        { hex: '#ec4899', rgb: '236,72,153',  img: base + 'mileena.jpg' },
+    kunglao:        { hex: '#84cc16', rgb: '132,204,22',  img: base + 'kunglao.gif' },
+    sonya:          { hex: '#f472b6', rgb: '244,114,182', img: base + 'sonya.gif' },
+    shangtsung:     { hex: '#f97316', rgb: '249,115,22',  img: base + 'shangtsung.gif' },
+    kano:           { hex: '#78716c', rgb: '120,113,108', img: base + 'kano.gif' },
+    nightwolf:      { hex: '#10b981', rgb: '16,185,129',  img: base + 'nightwolf.gif' },
+    cyrax:          { hex: '#eab308', rgb: '234,179,8',   img: base + 'cyrax.gif' },
+    sektor:         { hex: '#dc2626', rgb: '220,38,38',   img: base + 'sektor.gif' },
+    kabal:          { hex: '#64748b', rgb: '100,116,139', img: base + 'kabal.gif' },
+    jade:           { hex: '#4ade80', rgb: '74,222,128',  img: base + 'jade.gif' },
+    sindel:         { hex: '#c026d3', rgb: '192,38,211',  img: base + 'sindel.gif' },
+    ermac:          { hex: '#b91c1c', rgb: '185,28,28',   img: base + 'ermac.gif' },
+    sheeva:         { hex: '#d97706', rgb: '217,119,6',   img: base + 'sheeva.gif' },
+    stryker:        { hex: '#60a5fa', rgb: '96,165,250',  img: base + 'stryker.gif' },
+    classicsubzero: { hex: '#93c5fd', rgb: '147,197,253', img: base + 'classicsubzero.jpg' },
+    smoke:          { hex: '#9ca3af', rgb: '156,163,175', img: base + 'smoke.gif' },
+    noobsaibot:     { hex: '#6366f1', rgb: '99,102,241',  img: base + 'noobsaibot.gif' },
   };
 }
 const CHARS = makeChars();
@@ -51,7 +51,7 @@ const CHARS = makeChars();
 const MAX_SCORE = 21;
 
 function charInfo(character) {
-  return CHARS[character] || { emoji: '🗡️', hex: '#ffdd00', rgb: '255,221,0', img: '' };
+  return CHARS[character] || { hex: '#ffdd00', rgb: '255,221,0', img: '' };
 }
 
 function connect() {
@@ -142,7 +142,6 @@ function renderScoreboard() {
 
     return '<div class="mk-team-card" data-session="' + s.sessionId + '" style="--cc:' + c.hex + ';--cr:' + c.rgb + '">' +
       '<div class="mk-card-portrait">' +
-        '<span class="mk-card-portrait-emoji">' + c.emoji + '</span>' +
         '<img src="' + c.img + '" alt="' + s.character + '" onerror="this.remove()">' +
         '<div class="mk-rank-badge">' + (idx + 1) + '</div>' +
       '</div>' +
@@ -150,7 +149,7 @@ function renderScoreboard() {
         '<div class="mk-card-name-row">' +
           '<div class="mk-card-name">' +
             '<div style="color:var(--cc);font-size:10px;margin-bottom:2px">' + escHtml(s.nickname) + '</div>' +
-            '<div style="font-size:7px;color:#888;letter-spacing:1px">' + c.emoji + ' ' + s.character.toUpperCase() + '</div>' +
+            '<div style="font-size:7px;color:#888;letter-spacing:1px">' + s.character.toUpperCase() + '</div>' +
           '</div>' +
           '<div class="mk-card-score">' + s.totalScore + '</div>' +
         '</div>' +
@@ -213,7 +212,7 @@ function addActivityLog(task, isNew = true) {
   entry.innerHTML =
     '<div class="log-left">' +
       '<span class="log-team" style="color:' + c.hex + '">' +
-        c.emoji + ' ' + escHtml(task.nickname) +
+        escHtml(task.nickname) +
         '<span style="font-size:7px;color:#666;margin-left:4px">(' + task.character + ')</span>' +
       '</span>' +
       '<span class="log-desc">COMPLETED TASK ' + task.taskId + '</span>' +

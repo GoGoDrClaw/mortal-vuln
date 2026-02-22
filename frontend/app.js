@@ -5,29 +5,29 @@ let selectedChar = null;
 
 // ── All 23 UMK3 characters ─────────────────────────────────────────
 const ALL_CHARS = {
-  scorpion:       { label: 'SCORPION',         emoji: '🦂', hex: '#f59e0b', rgb: '245,158,11',  img: '/chars/scorpion.jpg' },
-  subzero:        { label: 'SUB-ZERO',          emoji: '❄️',  hex: '#3b82f6', rgb: '59,130,246',  img: '/chars/subzero.gif' },
-  liukang:        { label: 'LIU KANG',          emoji: '🔥', hex: '#ef4444', rgb: '239,68,68',   img: '/chars/liukang.gif' },
-  kitana:         { label: 'KITANA',            emoji: '👸', hex: '#8b5cf6', rgb: '139,92,246',  img: '/chars/kitana.jpg' },
-  raiden:         { label: 'RAIDEN',            emoji: '⚡', hex: '#a78bfa', rgb: '167,139,250', img: '/chars/raiden.jpg' },
-  jax:            { label: 'JAX',               emoji: '💪', hex: '#22c55e', rgb: '34,197,94',   img: '/chars/jax.gif' },
-  mileena:        { label: 'MILEENA',           emoji: '🎭', hex: '#ec4899', rgb: '236,72,153',  img: '/chars/mileena.jpg' },
-  kunglao:        { label: 'KUNG LAO',          emoji: '🎩', hex: '#84cc16', rgb: '132,204,22',  img: '/chars/kunglao.gif' },
-  sonya:          { label: 'SONYA',             emoji: '🎖️', hex: '#f472b6', rgb: '244,114,182', img: '/chars/sonya.gif' },
-  shangtsung:     { label: 'SHANG TSUNG',       emoji: '💀', hex: '#f97316', rgb: '249,115,22',  img: '/chars/shangtsung.gif' },
-  kano:           { label: 'KANO',              emoji: '🔺', hex: '#78716c', rgb: '120,113,108', img: '/chars/kano.gif' },
-  nightwolf:      { label: 'NIGHTWOLF',         emoji: '🐺', hex: '#10b981', rgb: '16,185,129',  img: '/chars/nightwolf.gif' },
-  cyrax:          { label: 'CYRAX',             emoji: '🤖', hex: '#eab308', rgb: '234,179,8',   img: '/chars/cyrax.gif' },
-  sektor:         { label: 'SEKTOR',            emoji: '🚀', hex: '#dc2626', rgb: '220,38,38',   img: '/chars/sektor.gif' },
-  kabal:          { label: 'KABAL',             emoji: '🗡️',  hex: '#64748b', rgb: '100,116,139', img: '/chars/kabal.gif' },
-  jade:           { label: 'JADE',              emoji: '💚', hex: '#4ade80', rgb: '74,222,128',  img: '/chars/jade.gif' },
-  sindel:         { label: 'SINDEL',            emoji: '👑', hex: '#c026d3', rgb: '192,38,211',  img: '/chars/sindel.gif' },
-  ermac:          { label: 'ERMAC',             emoji: '👻', hex: '#b91c1c', rgb: '185,28,28',   img: '/chars/ermac.gif' },
-  sheeva:         { label: 'SHEEVA',            emoji: '👊', hex: '#d97706', rgb: '217,119,6',   img: '/chars/sheeva.gif' },
-  stryker:        { label: 'STRYKER',           emoji: '🚔', hex: '#60a5fa', rgb: '96,165,250',  img: '/chars/stryker.gif' },
-  classicsubzero: { label: 'CLASSIC SUB-ZERO',  emoji: '🧊', hex: '#93c5fd', rgb: '147,197,253', img: '/chars/classicsubzero.jpg' },
-  smoke:          { label: 'SMOKE',             emoji: '💨', hex: '#9ca3af', rgb: '156,163,175', img: '/chars/smoke.gif' },
-  noobsaibot:     { label: 'NOOB SAIBOT',       emoji: '🌑', hex: '#6366f1', rgb: '99,102,241',  img: '/chars/noobsaibot.gif' },
+  scorpion:       { label: 'SCORPION', hex: '#f59e0b', rgb: '245,158,11',  img: '/chars/scorpion.jpg' },
+  subzero:        { label: 'SUB-ZERO', hex: '#3b82f6', rgb: '59,130,246',  img: '/chars/subzero.gif' },
+  liukang:        { label: 'LIU KANG', hex: '#ef4444', rgb: '239,68,68',   img: '/chars/liukang.gif' },
+  kitana:         { label: 'KITANA', hex: '#8b5cf6', rgb: '139,92,246',  img: '/chars/kitana.jpg' },
+  raiden:         { label: 'RAIDEN', hex: '#a78bfa', rgb: '167,139,250', img: '/chars/raiden.jpg' },
+  jax:            { label: 'JAX', hex: '#22c55e', rgb: '34,197,94',   img: '/chars/jax.gif' },
+  mileena:        { label: 'MILEENA', hex: '#ec4899', rgb: '236,72,153',  img: '/chars/mileena.jpg' },
+  kunglao:        { label: 'KUNG LAO', hex: '#84cc16', rgb: '132,204,22',  img: '/chars/kunglao.gif' },
+  sonya:          { label: 'SONYA', hex: '#f472b6', rgb: '244,114,182', img: '/chars/sonya.gif' },
+  shangtsung:     { label: 'SHANG TSUNG', hex: '#f97316', rgb: '249,115,22',  img: '/chars/shangtsung.gif' },
+  kano:           { label: 'KANO', hex: '#78716c', rgb: '120,113,108', img: '/chars/kano.gif' },
+  nightwolf:      { label: 'NIGHTWOLF', hex: '#10b981', rgb: '16,185,129',  img: '/chars/nightwolf.gif' },
+  cyrax:          { label: 'CYRAX', hex: '#eab308', rgb: '234,179,8',   img: '/chars/cyrax.gif' },
+  sektor:         { label: 'SEKTOR', hex: '#dc2626', rgb: '220,38,38',   img: '/chars/sektor.gif' },
+  kabal:          { label: 'KABAL', hex: '#64748b', rgb: '100,116,139', img: '/chars/kabal.gif' },
+  jade:           { label: 'JADE', hex: '#4ade80', rgb: '74,222,128',  img: '/chars/jade.gif' },
+  sindel:         { label: 'SINDEL', hex: '#c026d3', rgb: '192,38,211',  img: '/chars/sindel.gif' },
+  ermac:          { label: 'ERMAC', hex: '#b91c1c', rgb: '185,28,28',   img: '/chars/ermac.gif' },
+  sheeva:         { label: 'SHEEVA', hex: '#d97706', rgb: '217,119,6',   img: '/chars/sheeva.gif' },
+  stryker:        { label: 'STRYKER', hex: '#60a5fa', rgb: '96,165,250',  img: '/chars/stryker.gif' },
+  classicsubzero: { label: 'CLASSIC SUB-ZERO', hex: '#93c5fd', rgb: '147,197,253', img: '/chars/classicsubzero.jpg' },
+  smoke:          { label: 'SMOKE', hex: '#9ca3af', rgb: '156,163,175', img: '/chars/smoke.gif' },
+  noobsaibot:     { label: 'NOOB SAIBOT', hex: '#6366f1', rgb: '99,102,241',  img: '/chars/noobsaibot.gif' },
 };
 
 const CHARS_LIST = Object.keys(ALL_CHARS);
@@ -62,7 +62,7 @@ function getSessionID() {
 
 function charBadge(character) {
   const c = ALL_CHARS[character];
-  return `<span class="team-badge" style="background:${c?.hex || '#888'}">${c?.emoji || ''} ${(c?.label || character).toUpperCase()}</span>`;
+  return `<span class="team-badge" style="background:${c?.hex || '#888'}">${(c?.label || character).toUpperCase()}</span>`;
 }
 
 function hideAll() {
@@ -178,7 +178,6 @@ function renderCharSelect() {
       'style="--cc:' + c.hex + ';--cr:' + c.rgb + '" ' +
       'onclick="selectChar(\'' + char + '\')">' +
         '<div class="mk-cell-inner">' +
-          '<span class="mk-fallback">' + c.emoji + '</span>' +
           '<img src="' + c.img + '" class="mk-char-img" alt="' + c.label + '" onerror="this.remove()">' +
         '</div>' +
         '<div class="mk-cell-name">' + c.label + '</div>' +
@@ -202,7 +201,7 @@ function selectChar(char) {
   selectedChar = char;
   const c = ALL_CHARS[char];
 
-  document.getElementById('selected-char-label').innerHTML = c.emoji + ' ' + c.label;
+  document.getElementById('selected-char-label').innerHTML = c.label;
   document.getElementById('nickname-input').value = '';
   document.getElementById('nickname-error').classList.add('hidden');
 
