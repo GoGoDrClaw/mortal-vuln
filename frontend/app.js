@@ -118,6 +118,7 @@ init();
 function startNewGame() {
   selectedChar = null;
   document.getElementById('nickname-section').classList.add('hidden');
+  document.querySelector('.mk-grid-frame')?.classList.remove('hidden');
   document.querySelectorAll('.mk-cell').forEach(el => el.classList.remove('mk-cursor'));
   show('team-section');
 }
@@ -199,14 +200,14 @@ function renderCharSelect() {
 
 function selectChar(char) {
   selectedChar = char;
-  document.querySelectorAll('.mk-cell').forEach(el => el.classList.remove('mk-cursor'));
-  const cell = document.querySelector(`.mk-cell[data-team="${char}"]`);
-  if (cell) cell.classList.add('mk-cursor');
-
   const c = ALL_CHARS[char];
+
   document.getElementById('selected-char-label').innerHTML = c.emoji + ' ' + c.label;
   document.getElementById('nickname-input').value = '';
   document.getElementById('nickname-error').classList.add('hidden');
+
+  // Swap: hide grid, show nickname form
+  document.querySelector('.mk-grid-frame')?.classList.add('hidden');
   document.getElementById('nickname-section').classList.remove('hidden');
   document.getElementById('nickname-input').focus();
 }
@@ -214,8 +215,8 @@ function selectChar(char) {
 function cancelCharSelect() {
   selectedChar = null;
   document.getElementById('nickname-section').classList.add('hidden');
+  document.querySelector('.mk-grid-frame')?.classList.remove('hidden');
   document.querySelectorAll('.mk-cell').forEach(el => el.classList.remove('mk-cursor'));
-  show('start-section');
 }
 
 // ── New game ───────────────────────────────────────────────────────
