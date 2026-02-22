@@ -22,7 +22,60 @@
     </div>
     <div class="mk-warn-banner">☠ MORTAL KOMBAT ☠ &nbsp; FIND ALL VULNERABILITIES AND SURVIVE &nbsp; ☠ MORTAL KOMBAT ☠</div>
 
-    <div id="team-section">
+    <!-- ── START SCREEN ──────────────────────────────────────────── -->
+    <div id="start-section" class="hidden">
+      <div class="mk-panel mk-start-panel">
+        <div class="mk-start-logo">⚔ TEST YOUR MIGHT ⚔</div>
+        <p class="mk-start-sub">CHOOSE YOUR DESTINY</p>
+        <div class="mk-start-buttons">
+          <button class="btn-start btn-new-game" onclick="startNewGame()">
+            <span class="btn-start-icon">▶</span>
+            <span class="btn-start-label">NEW GAME</span>
+            <span class="btn-start-hint">Choose fighter + enter your name</span>
+          </button>
+          <button class="btn-start btn-continue" onclick="startContinue()">
+            <span class="btn-start-icon">↩</span>
+            <span class="btn-start-label">CONTINUE</span>
+            <span class="btn-start-hint">Enter your save code</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CONTINUE / RESTORE ────────────────────────────────────── -->
+    <div id="restore-section" class="hidden">
+      <div class="mk-panel">
+        <div class="mk-panel-header">
+          <span class="mk-panel-title">↩ RESTORE SESSION</span>
+        </div>
+        <div class="mk-panel-divider"></div>
+        <label class="mk-label">YOUR SAVE CODE</label>
+        <input id="restore-code" placeholder="XXXX-XXXX" maxlength="9" style="text-transform:uppercase;letter-spacing:3px;text-align:center"/>
+        <div id="restore-error" class="error hidden"></div>
+        <div class="mk-btn-row">
+          <button class="btn-primary" onclick="doRestore()">▶ RESTORE</button>
+          <button class="btn-danger" onclick="backToStart()">◀ BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── SAVE CODE REVEAL ──────────────────────────────────────── -->
+    <div id="savecode-section" class="hidden">
+      <div class="mk-panel mk-savecode-panel">
+        <div class="mk-panel-header">
+          <span class="mk-panel-title">⚔ KOMBATANT REGISTERED</span>
+        </div>
+        <div class="mk-panel-divider"></div>
+        <p class="mk-savecode-warn">☠ WRITE DOWN YOUR SAVE CODE — YOU WILL NEED IT ☠</p>
+        <div class="mk-savecode-box" id="savecode-display">????-????</div>
+        <p class="mk-savecode-sub">Enter this code on <strong>CONTINUE</strong> to restore your progress on any device.</p>
+        <div id="restore-info" class="hidden" style="color:#22c55e;font-size:9px;margin:8px 0;text-align:center"></div>
+        <button class="btn-primary" style="width:100%" onclick="proceedToLogin()">▶ ENTER THE REALM</button>
+      </div>
+    </div>
+
+    <!-- ── CHARACTER SELECT ──────────────────────────────────────── -->
+    <div id="team-section" class="hidden">
       <div class="mk-scanlines"></div>
       <div class="mk-vignette"></div>
 
@@ -36,14 +89,29 @@
       </div>
 
       <div class="mk-grid-frame">
-        <div class="mk-select-grid">
-          <!-- Populated dynamically by app.js from /api/teams -->
+        <div class="mk-select-grid"></div>
+      </div>
+
+      <!-- Nickname input — shown after character is selected -->
+      <div id="nickname-section" class="hidden" style="padding:16px 0">
+        <div class="mk-panel" style="max-width:420px;margin:0 auto">
+          <div class="mk-panel-header">
+            <span class="mk-panel-title" id="selected-char-label">YOUR FIGHTER</span>
+          </div>
+          <div class="mk-panel-divider"></div>
+          <label class="mk-label">KOMBATANT NAME</label>
+          <input id="nickname-input" placeholder="Enter your name..." maxlength="50"/>
+          <div id="nickname-error" class="error hidden"></div>
+          <div class="mk-btn-row">
+            <button class="btn-primary" onclick="doNewGame()">⚔ START BATTLE</button>
+            <button class="btn-danger" onclick="cancelCharSelect()">◀ BACK</button>
+          </div>
         </div>
       </div>
 
       <div class="mk-bottom-bar">
         <span class="mk-bottom-left">⚔ VULNNOTES CTF</span>
-        <span class="mk-bottom-center">◄ EACH TEAM HAS AN ISOLATED DATABASE ►</span>
+        <span class="mk-bottom-center">◄ EACH PLAYER HAS AN ISOLATED DATABASE ►</span>
         <span class="mk-bottom-right">CREDITS: ∞</span>
       </div>
 
@@ -56,6 +124,7 @@
       </div>
     </div>
 
+    <!-- ── LOGIN ─────────────────────────────────────────────────── -->
     <div id="login-section" class="hidden">
       <div class="mk-panel">
         <div class="mk-panel-header">
@@ -69,7 +138,7 @@
         <input id="login-pass" placeholder="password" type="password"/>
         <div class="mk-btn-row">
           <button class="btn-primary" onclick="doLogin()">▶ FIGHT!</button>
-          <button class="btn-danger" onclick="switchTeam()">◀ SWITCH FIGHTER</button>
+          <button class="btn-danger" onclick="doLogout()">◀ NEW GAME</button>
         </div>
         <div id="login-error" class="error hidden"></div>
         <div id="login-token" class="hidden">
@@ -79,6 +148,7 @@
       </div>
     </div>
 
+    <!-- ── MAIN APP ───────────────────────────────────────────────── -->
     <div id="app-section" class="hidden">
       <div class="mk-hud">
         <div class="mk-hud-fighter">

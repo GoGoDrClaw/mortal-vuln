@@ -5,7 +5,7 @@ const WS_URL = `${wsProtocol}//api.${baseDomain}${port}/ws`;
 const FRONTEND_URL = `${window.location.protocol}//${baseDomain}${port}`;
 
 let ws = null;
-let scores = {};
+let scores = {}; // keyed by sessionId
 let audioCtx = null;
 
 function getAudioCtx() {
@@ -15,13 +15,9 @@ function getAudioCtx() {
 }
 
 function unlockAudio(btn) {
-  try {
-    const ctx = getAudioCtx();
-    ctx.resume().then(() => { btn.textContent = '🔊'; });
-  } catch (_) {}
+  try { getAudioCtx().resume().then(() => { btn.textContent = '🔊'; }); } catch (_) {}
 }
 
-// All 23 UMK3 characters — images reference frontend domain to avoid cross-subdomain issues
 function makeChars() {
   const base = FRONTEND_URL + '/chars/';
   return {
@@ -52,18 +48,16 @@ function makeChars() {
 }
 const CHARS = makeChars();
 
-// Aliases for backward compat inside this file
-const TEAM_COLORS = Object.fromEntries(Object.entries(CHARS).map(([k, v]) => [k, { hex: v.hex, rgb: v.rgb }]));
-const TEAM_EMOJI  = Object.fromEntries(Object.entries(CHARS).map(([k, v]) => [k, v.emoji]));
-const TEAM_IMAGES = Object.fromEntries(Object.entries(CHARS).map(([k, v]) => [k, v.img]));
-
 const MAX_SCORE = 21;
+
+function charInfo(character) {
+  return CHARS[character] || { emoji: '⚔', hex: '#ffdd00', rgb: '255,221,0', img: '' };
+}
 
 function connect() {
   ws = new WebSocket(WS_URL);
 
   ws.onopen = () => {
-    console.log('✅ WebSocket connected');
     const el = document.getElementById('ws-status');
     el.textContent = '⚡ CONNECTED TO OUTWORLD';
     el.style.color = '#22c55e';
@@ -71,10 +65,9 @@ function connect() {
 
   ws.onmessage = (event) => {
     const data = JSON.parse(event.data);
-
     if (data.type === 'init') {
       scores = {};
-      data.scores.forEach(team => { scores[team.team] = team; });
+      data.scores.forEach(s => { scores[s.sessionId] = s; });
       renderScoreboard();
       rebuildFeed(data.scores);
     } else if (data.type === 'task_completed') {
@@ -97,16 +90,21 @@ function connect() {
 }
 
 function handleTaskCompleted(task) {
-  if (!scores[task.team]) {
-    scores[task.team] = { team: task.team, total_score: 0, completed: [] };
+  const key = task.sessionId;
+  if (!scores[key]) {
+    scores[key] = {
+      sessionId: key,
+      nickname:  task.nickname,
+      character: task.character,
+      saveCode:  '',
+      totalScore: 0,
+      completed: []
+    };
   }
-
-  const exists = scores[task.team].completed.find(t => t.task_id === task.task_id);
+  const exists = scores[key].completed.find(t => t.taskId === task.taskId);
   if (exists) return;
-
-  scores[task.team].completed.push(task);
-  scores[task.team].total_score += task.points;
-
+  scores[key].completed.push(task);
+  scores[key].totalScore += task.points;
   renderScoreboard();
   addActivityLog(task);
   playFatalitySound();
@@ -114,44 +112,47 @@ function handleTaskCompleted(task) {
 
 function renderScoreboard() {
   const container = document.getElementById('scoreboard');
-  const sorted = Object.values(scores).sort((a, b) => b.total_score - a.total_score);
+  const sorted = Object.values(scores).sort((a, b) => b.totalScore - a.totalScore);
 
   if (sorted.length === 0) {
     container.innerHTML = '<div style="color:#332200;font-size:8px;text-align:center;padding:40px;letter-spacing:2px;grid-column:1/-1">AWAITING WARRIORS...</div>';
     return;
   }
 
-  // FLIP: record old positions before DOM change
   const oldPositions = {};
-  container.querySelectorAll('.mk-team-card[data-team]').forEach(el => {
-    oldPositions[el.dataset.team] = el.getBoundingClientRect();
+  container.querySelectorAll('.mk-team-card[data-session]').forEach(el => {
+    oldPositions[el.dataset.session] = el.getBoundingClientRect();
   });
 
-  container.innerHTML = sorted.map((team, idx) => {
-    const c = TEAM_COLORS[team.team] || { hex: '#ffdd00', rgb: '255,221,0' };
-    const pct = Math.min(100, Math.round((team.total_score / MAX_SCORE) * 100));
+  container.innerHTML = sorted.map((s, idx) => {
+    const c = charInfo(s.character);
+    const pct = Math.min(100, Math.round((s.totalScore / MAX_SCORE) * 100));
 
-    const lastTask = [...team.completed].sort((a, b) => {
+    const lastTask = [...(s.completed || [])].sort((a, b) => {
       const ta = a.timestamp || '', tb = b.timestamp || '';
-      return ta > tb ? -1 : ta < tb ? 1 : b.task_id - a.task_id;
+      return ta > tb ? -1 : ta < tb ? 1 : b.taskId - a.taskId;
     })[0];
-    const taskItems = lastTask
+
+    const taskItem = lastTask
       ? '<li class="mk-task-item">' +
-          '<span class="mk-task-name">TASK ' + lastTask.task_id + '</span>' +
+          '<span class="mk-task-name">TASK ' + lastTask.taskId + '</span>' +
           '<span class="mk-task-pts">+' + lastTask.points + '</span>' +
         '</li>'
       : '';
 
-    return '<div class="mk-team-card" data-team="' + team.team + '" style="--cc:' + c.hex + ';--cr:' + c.rgb + '">' +
+    return '<div class="mk-team-card" data-session="' + s.sessionId + '" style="--cc:' + c.hex + ';--cr:' + c.rgb + '">' +
       '<div class="mk-card-portrait">' +
-        '<span class="mk-card-portrait-emoji">' + (TEAM_EMOJI[team.team] || '⚔') + '</span>' +
-        '<img src="' + (TEAM_IMAGES[team.team] || '') + '" alt="' + team.team + '" onerror="this.remove()">' +
+        '<span class="mk-card-portrait-emoji">' + c.emoji + '</span>' +
+        '<img src="' + c.img + '" alt="' + s.character + '" onerror="this.remove()">' +
         '<div class="mk-rank-badge">' + (idx + 1) + '</div>' +
       '</div>' +
       '<div class="mk-card-body">' +
         '<div class="mk-card-name-row">' +
-          '<div class="mk-card-name">' + team.team.toUpperCase() + '</div>' +
-          '<div class="mk-card-score">' + team.total_score + '</div>' +
+          '<div class="mk-card-name">' +
+            '<div style="color:var(--cc);font-size:10px;margin-bottom:2px">' + escHtml(s.nickname) + '</div>' +
+            '<div style="font-size:7px;color:#888;letter-spacing:1px">' + c.emoji + ' ' + s.character.toUpperCase() + '</div>' +
+          '</div>' +
+          '<div class="mk-card-score">' + s.totalScore + '</div>' +
         '</div>' +
         '<div class="mk-health-wrap">' +
           '<div class="mk-health-label">POWER — ' + pct + '%</div>' +
@@ -160,56 +161,48 @@ function renderScoreboard() {
           '</div>' +
         '</div>' +
         '<ul class="mk-tasks">' +
-          (taskItems || '<li class="mk-no-tasks">NO FATALITIES YET</li>') +
+          (taskItem || '<li class="mk-no-tasks">NO FATALITIES YET</li>') +
         '</ul>' +
       '</div>' +
     '</div>';
   }).join('');
 
-  // FLIP: animate cards from old positions to new ones
-  container.querySelectorAll('.mk-team-card[data-team]').forEach(el => {
-    const old = oldPositions[el.dataset.team];
+  // FLIP animation
+  container.querySelectorAll('.mk-team-card[data-session]').forEach(el => {
+    const old = oldPositions[el.dataset.session];
     if (!old) return;
     const cur = el.getBoundingClientRect();
-    const dx = old.left - cur.left;
-    const dy = old.top - cur.top;
+    const dx = old.left - cur.left, dy = old.top - cur.top;
     if (dx === 0 && dy === 0) return;
     el.style.transition = 'none';
-    el.style.transform = `translate(${dx}px, ${dy}px)`;
+    el.style.transform = `translate(${dx}px,${dy}px)`;
     requestAnimationFrame(() => requestAnimationFrame(() => {
-      el.style.transition = 'transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94)';
+      el.style.transition = 'transform 0.5s cubic-bezier(0.25,0.46,0.45,0.94)';
       el.style.transform = '';
     }));
   });
 }
 
-function rebuildFeed(teams) {
-  // Collect all completed tasks across all teams, sort by timestamp asc
+function rebuildFeed(sessions) {
   const all = [];
-  teams.forEach(team => {
-    (team.completed || []).forEach(t => {
-      all.push({ ...t, team: team.team });
-    });
+  sessions.forEach(s => {
+    (s.completed || []).forEach(t => { all.push({ ...t, sessionId: s.sessionId }); });
   });
   all.sort((a, b) => {
     const ta = a.timestamp || '', tb = b.timestamp || '';
-    return ta < tb ? -1 : ta > tb ? 1 : a.task_id - b.task_id;
+    return ta < tb ? -1 : ta > tb ? 1 : a.taskId - b.taskId;
   });
-
   const activityDiv = document.getElementById('activity');
   activityDiv.innerHTML = '';
-
   if (all.length === 0) {
     activityDiv.innerHTML = '<div class="mk-empty-feed">AWAITING KOMBAT...</div>';
     return;
   }
-
-  // Add oldest→newest (each prepended → newest ends up on top)
   all.forEach(task => addActivityLog(task, false));
 }
 
 function addActivityLog(task, isNew = true) {
-  const c = TEAM_COLORS[task.team] || { hex: '#ffdd00', rgb: '255,221,0' };
+  const c = charInfo(task.character);
   const ts = task.timestamp
     ? (task.timestamp.split('T')[1]?.slice(0, 5) || task.timestamp.slice(0, 5))
     : '';
@@ -219,8 +212,11 @@ function addActivityLog(task, isNew = true) {
   entry.style.borderColor = c.hex;
   entry.innerHTML =
     '<div class="log-left">' +
-      '<span class="log-team" style="color:' + c.hex + '">' + (TEAM_EMOJI[task.team] || '') + ' ' + task.team.toUpperCase() + '</span>' +
-      '<span class="log-desc">COMPLETED TASK ' + task.task_id + '</span>' +
+      '<span class="log-team" style="color:' + c.hex + '">' +
+        c.emoji + ' ' + escHtml(task.nickname) +
+        '<span style="font-size:7px;color:#666;margin-left:4px">(' + task.character + ')</span>' +
+      '</span>' +
+      '<span class="log-desc">COMPLETED TASK ' + task.taskId + '</span>' +
     '</div>' +
     '<span class="log-pts" style="color:' + c.hex + '">+' + task.points + ' PT</span>' +
     '<span class="log-time">' + ts + '</span>';
@@ -228,14 +224,17 @@ function addActivityLog(task, isNew = true) {
   const activityDiv = document.getElementById('activity');
   const empty = activityDiv.querySelector('.mk-empty-feed');
   if (empty) empty.remove();
-
   activityDiv.insertBefore(entry, activityDiv.firstChild);
-
   if (isNew) setTimeout(() => entry.classList.remove('new'), 1000);
+  while (activityDiv.children.length > 50) activityDiv.removeChild(activityDiv.lastChild);
+}
 
-  while (activityDiv.children.length > 50) {
-    activityDiv.removeChild(activityDiv.lastChild);
-  }
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function playFatalitySound() {
@@ -244,15 +243,12 @@ function playFatalitySound() {
     [880, 440].forEach((freq, i) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = 'square';
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = freq; osc.type = 'square';
       const t = ctx.currentTime + i * 0.12;
       gain.gain.setValueAtTime(0.15, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.1);
-      osc.start(t);
-      osc.stop(t + 0.1);
+      osc.start(t); osc.stop(t + 0.1);
     });
   } catch (_) {}
 }

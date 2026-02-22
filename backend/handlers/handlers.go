@@ -6,10 +6,12 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
 	"time"
+	"vulnnotes/db"
 	"vulnnotes/middleware"
 	"vulnnotes/models"
 	"vulnnotes/tracker"
@@ -17,6 +19,15 @@ import (
 	"github.com/golang-jwt/jwt/v5"
 	_ "github.com/mattn/go-sqlite3"
 )
+
+var validCharacters = map[string]bool{
+	"scorpion": true, "subzero": true, "liukang": true, "kitana": true,
+	"raiden": true, "jax": true, "mileena": true, "kunglao": true,
+	"sonya": true, "shangtsung": true, "kano": true, "nightwolf": true,
+	"cyrax": true, "sektor": true, "kabal": true, "jade": true,
+	"sindel": true, "ermac": true, "sheeva": true, "stryker": true,
+	"smoke": true, "noobsaibot": true, "classicsubzero": true,
+}
 
 func WriteJSON(w http.ResponseWriter, code int, v any) {
 	w.Header().Set("Content-Type", "application/json")
@@ -44,34 +55,141 @@ func currentUser(r *http.Request) (int, string, string) {
 	return id, r.Header.Get("X-Username"), r.Header.Get("X-Role")
 }
 
-func teamDB(r *http.Request) *sql.DB {
-	return middleware.GetTeamDB(r.Header.Get("X-Team"))
+func sessionDB(r *http.Request) *sql.DB {
+	return middleware.GetSessionDB(r.Header.Get("X-Session-ID"))
 }
 
-func SelectTeam(w http.ResponseWriter, r *http.Request) {
+// ── Session management ────────────────────────────────────────────
+
+// InitSessions ensures /data/sessions directory exists.
+func InitSessions() {
+	os.MkdirAll("/data/sessions", 0755)
+	log.Println("✅ Sessions storage initialised: /data/sessions/")
+}
+
+// POST /api/session/new — create a new player session.
+func NewSession(w http.ResponseWriter, r *http.Request) {
 	body := ReadBody(r)
-	team := body["team"]
-	if !middleware.ValidTeam(team) {
-		WriteJSON(w, 400, map[string]string{"error": "Invalid team"})
+	nickname := strings.TrimSpace(body["nickname"])
+	character := strings.ToLower(strings.TrimSpace(body["character"]))
+
+	if nickname == "" || len(nickname) > 50 {
+		WriteJSON(w, 400, map[string]string{"error": "Nickname must be 1–50 characters"})
 		return
 	}
+	if !validCharacters[character] {
+		WriteJSON(w, 400, map[string]string{"error": "Invalid character"})
+		return
+	}
+
+	sess, err := db.CreateSession(nickname, character)
+	if err != nil {
+		log.Printf("❌ CreateSession: %v", err)
+		WriteJSON(w, 500, map[string]string{"error": "Failed to create session"})
+		return
+	}
+
+	// Seed isolated CTF database for this session
+	ctfDB := middleware.GetSessionDB(sess.ID)
+	seedDB(ctfDB)
+
 	http.SetCookie(w, &http.Cookie{
-		Name:     "team",
-		Value:    team,
+		Name:     "session_id",
+		Value:    sess.ID,
+		Path:     "/",
+		HttpOnly: false, // intentionally readable by JS (CTF)
+		SameSite: http.SameSiteNoneMode,
+		Secure:   true,
+	})
+
+	WriteJSON(w, 200, map[string]string{
+		"saveCode":  sess.DisplayCode(),
+		"sessionId": sess.ID,
+		"nickname":  sess.Nickname,
+		"character": sess.Character,
+	})
+}
+
+// POST /api/session/restore — restore a session by save code.
+func RestoreSession(w http.ResponseWriter, r *http.Request) {
+	body := ReadBody(r)
+	code := strings.TrimSpace(body["saveCode"])
+
+	sess, err := db.GetSessionByCode(code)
+	if err != nil {
+		log.Printf("❌ GetSessionByCode: %v", err)
+		WriteJSON(w, 500, map[string]string{"error": "Database error"})
+		return
+	}
+	if sess == nil {
+		WriteJSON(w, 404, map[string]string{"error": "Invalid save code"})
+		return
+	}
+
+	// Re-seed CTF database (fresh environment on restore)
+	ctfDB := middleware.GetSessionDB(sess.ID)
+	seedDB(ctfDB)
+
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    sess.ID,
 		Path:     "/",
 		HttpOnly: false,
 		SameSite: http.SameSiteNoneMode,
 		Secure:   true,
 	})
-	WriteJSON(w, 200, map[string]string{"message": "Team set to " + team})
+
+	score := tracker.GetSessionScore(sess.ID)
+	WriteJSON(w, 200, map[string]any{
+		"saveCode":       sess.DisplayCode(),
+		"sessionId":      sess.ID,
+		"nickname":       sess.Nickname,
+		"character":      sess.Character,
+		"message":        "Session restored",
+		"tasksCompleted": len(score.Completed),
+		"totalScore":     score.TotalScore,
+	})
 }
 
+// GET /api/session/check — return current session info from cookie.
+func CheckSession(w http.ResponseWriter, r *http.Request) {
+	c, err := r.Cookie("session_id")
+	if err != nil || c.Value == "" {
+		WriteJSON(w, 401, map[string]string{"error": "No session"})
+		return
+	}
+
+	sess, err := db.GetSessionByID(c.Value)
+	if err != nil || sess == nil {
+		WriteJSON(w, 401, map[string]string{"error": "Invalid session"})
+		return
+	}
+
+	WriteJSON(w, 200, map[string]string{
+		"saveCode":  sess.DisplayCode(),
+		"sessionId": sess.ID,
+		"nickname":  sess.Nickname,
+		"character": sess.Character,
+	})
+}
+
+// GET /api/characters — list all available characters.
+func GetCharacters(w http.ResponseWriter, r *http.Request) {
+	chars := make([]string, 0, len(validCharacters))
+	for k := range validCharacters {
+		chars = append(chars, k)
+	}
+	WriteJSON(w, 200, chars)
+}
+
+// ── CTF handlers ──────────────────────────────────────────────────
+
 func Login(w http.ResponseWriter, r *http.Request) {
-	d := teamDB(r)
+	d := sessionDB(r)
 	body := ReadBody(r)
 	username := body["username"]
 	password := body["password"]
-	team := r.Header.Get("X-Team")
+	sessionID := r.Header.Get("X-Session-ID")
 
 	query := fmt.Sprintf(
 		"SELECT id, username, password, role FROM users WHERE username='%s' AND password='%s'",
@@ -85,13 +203,13 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		switch user.Username {
 		case "alice":
 			if password == "123456" {
-				tracker.CompleteTask(team, 0, "Brute forced alice's password")
+				tracker.CompleteTask(sessionID, 0, "Brute forced alice's password")
 			}
 		case "admin":
 			if password != "Sup3r_S3cret_Adm1n!" {
-				tracker.CompleteTask(team, 4, fmt.Sprintf("SQL Injection: username='%s'", username))
+				tracker.CompleteTask(sessionID, 4, fmt.Sprintf("SQL Injection: username='%s'", username))
 			} else {
-				tracker.CompleteTask(team, 5, "Logged in as admin with correct password")
+				tracker.CompleteTask(sessionID, 5, "Logged in as admin with correct password")
 			}
 		}
 	}
@@ -107,11 +225,11 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 
 	claims := models.Claims{
-		ID:       user.ID,
-		Username: user.Username,
-		Role:     user.Role,
-		Password: user.Password,
-		Team:     team,
+		ID:        user.ID,
+		Username:  user.Username,
+		Role:      user.Role,
+		Password:  user.Password,
+		SessionID: sessionID,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	tokenStr, _ := token.SignedString(middleware.JWTSecret)
@@ -129,7 +247,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetNotes(w http.ResponseWriter, r *http.Request) {
-	d := teamDB(r)
+	d := sessionDB(r)
 	uid, _, _ := currentUser(r)
 	rows, err := d.Query("SELECT id, user_id, title, content, created FROM notes WHERE user_id = ?", uid)
 	if err != nil {
@@ -147,9 +265,9 @@ func GetNotes(w http.ResponseWriter, r *http.Request) {
 }
 
 func GetNote(w http.ResponseWriter, r *http.Request) {
-	d := teamDB(r)
+	d := sessionDB(r)
 	uid, _, _ := currentUser(r)
-	team := r.Header.Get("X-Team")
+	sessionID := r.Header.Get("X-Session-ID")
 	parts := strings.Split(r.URL.Path, "/")
 	idStr := parts[len(parts)-1]
 
@@ -164,27 +282,27 @@ func GetNote(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if n.UserID != uid && n.UserID == 1 {
-		tracker.CompleteTask(team, 3, fmt.Sprintf("Read admin note ID=%d", n.ID))
+		tracker.CompleteTask(sessionID, 3, fmt.Sprintf("Read admin note ID=%d", n.ID))
 	}
 
 	WriteJSON(w, 200, n)
 }
 
 func CreateNote(w http.ResponseWriter, r *http.Request) {
-	d := teamDB(r)
+	d := sessionDB(r)
 	uid, _, _ := currentUser(r)
-	team := r.Header.Get("X-Team")
+	sessionID := r.Header.Get("X-Session-ID")
 	body := ReadBody(r)
 
 	title := body["title"]
 	content := body["content"]
 
 	if strings.Contains(content, "<script") || strings.Contains(content, "onerror") {
-		tracker.CompleteTask(team, 6, "XSS payload detected")
+		tracker.CompleteTask(sessionID, 6, "XSS payload detected")
 	}
 
 	if strings.ToUpper(title) == "FINISH HIM" && strings.Contains(content, "↑↑↓↓←→←→BA") {
-		tracker.CompleteTask(team, 10, "🎮 FATALITY! Mortal Kombat easter egg discovered!")
+		tracker.CompleteTask(sessionID, 10, "🎮 FATALITY! Mortal Kombat easter egg discovered!")
 	}
 
 	res, err := d.Exec("INSERT INTO notes (user_id, title, content) VALUES (?, ?, ?)", uid, title, content)
@@ -197,26 +315,22 @@ func CreateNote(w http.ResponseWriter, r *http.Request) {
 }
 
 func DeleteNote(w http.ResponseWriter, r *http.Request) {
-	d := teamDB(r)
+	d := sessionDB(r)
 	uid, _, _ := currentUser(r)
-	team := r.Header.Get("X-Team")
+	sessionID := r.Header.Get("X-Session-ID")
 	parts := strings.Split(r.URL.Path, "/")
 	idStr := parts[len(parts)-1]
 
 	var ownerID int
 	d.QueryRow("SELECT user_id FROM notes WHERE id = ?", idStr).Scan(&ownerID)
 
-	// Check for CSRF: request from any domain other than our own frontend/dashboard
 	origin := r.Header.Get("Origin")
 	if origin != "" {
-		// Derive base domain from Host header (api.example.com → example.com)
 		host := r.Host
 		if i := strings.LastIndex(host, ":"); i != -1 {
 			host = host[:i]
 		}
 		baseDomain := strings.TrimPrefix(host, "api.")
-
-		// Extract hostname from origin (strip protocol and port)
 		originHost := origin
 		if i := strings.Index(originHost, "://"); i != -1 {
 			originHost = originHost[i+3:]
@@ -224,19 +338,16 @@ func DeleteNote(w http.ResponseWriter, r *http.Request) {
 		if i := strings.LastIndex(originHost, ":"); i != -1 {
 			originHost = originHost[:i]
 		}
-
-		// Legitimate origins: bare domain and dashboard subdomain
 		isLegit := originHost == baseDomain ||
 			originHost == "dashboard."+baseDomain ||
 			originHost == "www."+baseDomain
-
 		if !isLegit {
-			tracker.CompleteTask(team, 9, fmt.Sprintf("CSRF: deleted note ID=%s from origin=%s", idStr, origin))
+			tracker.CompleteTask(sessionID, 9, fmt.Sprintf("CSRF: deleted note ID=%s from origin=%s", idStr, origin))
 		}
 	}
 
 	if ownerID != uid && ownerID != 0 {
-		tracker.CompleteTask(team, 7, fmt.Sprintf("Deleted note ID=%s owned by user %d", idStr, ownerID))
+		tracker.CompleteTask(sessionID, 7, fmt.Sprintf("Deleted note ID=%s owned by user %d", idStr, ownerID))
 	}
 
 	d.Exec("DELETE FROM notes WHERE id = ?", idStr)
@@ -244,7 +355,7 @@ func DeleteNote(w http.ResponseWriter, r *http.Request) {
 }
 
 func AdminUsers(w http.ResponseWriter, r *http.Request) {
-	d := teamDB(r)
+	d := sessionDB(r)
 	_, _, role := currentUser(r)
 
 	if role != "admin" {
@@ -264,7 +375,7 @@ func AdminUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 func ChangePassword(w http.ResponseWriter, r *http.Request) {
-	d := teamDB(r)
+	d := sessionDB(r)
 	uid, _, _ := currentUser(r)
 	body := ReadBody(r)
 	d.Exec("UPDATE users SET password = ? WHERE id = ?", body["newPassword"], uid)
@@ -272,15 +383,15 @@ func ChangePassword(w http.ResponseWriter, r *http.Request) {
 }
 
 func SubmitFlag(w http.ResponseWriter, r *http.Request) {
-	team := r.Header.Get("X-Team")
+	sessionID := r.Header.Get("X-Session-ID")
 
 	buf := make([]byte, 256)
 	n, _ := r.Body.Read(buf)
 	flag := strings.TrimSpace(string(buf[:n]))
 
 	validFlags := map[string]int{
-		"password":           1,
-		"exp":                2,
+		"password":            1,
+		"exp":                 2,
 		"Sup3r_S3cret_Adm1n!": 5,
 	}
 
@@ -290,28 +401,27 @@ func SubmitFlag(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	teamScore := tracker.GetTeamScore(team)
-	for _, completed := range teamScore.Completed {
+	score := tracker.GetSessionScore(sessionID)
+	for _, completed := range score.Completed {
 		if completed.TaskID == taskID {
 			WriteJSON(w, 400, map[string]string{"error": "Task already completed"})
 			return
 		}
 	}
 
-	tracker.CompleteTask(team, taskID, "")
+	tracker.CompleteTask(sessionID, taskID, "")
 	WriteJSON(w, 200, map[string]string{"message": "Correct!"})
 }
 
-
 func Reset(w http.ResponseWriter, r *http.Request) {
-	team := middleware.TeamFromRequest(r)
-	if team == "" {
-		WriteJSON(w, 400, map[string]string{"error": "No team"})
+	c, err := r.Cookie("session_id")
+	if err != nil || c.Value == "" {
+		WriteJSON(w, 400, map[string]string{"error": "No session"})
 		return
 	}
-	d := middleware.GetTeamDB(team)
+	d := middleware.GetSessionDB(c.Value)
 	if d == nil {
-		WriteJSON(w, 400, map[string]string{"error": "Unknown team"})
+		WriteJSON(w, 400, map[string]string{"error": "Session not found"})
 		return
 	}
 	seedDB(d)
@@ -322,11 +432,10 @@ func GetScores(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, 200, tracker.GetAllScores())
 }
 
-func GetTeams(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, 200, middleware.Teams)
-}
-
 func seedDB(d *sql.DB) {
+	if d == nil {
+		return
+	}
 	d.Exec(`DROP TABLE IF EXISTS notes`)
 	d.Exec(`DROP TABLE IF EXISTS users`)
 	d.Exec(`
@@ -371,33 +480,8 @@ Or Shao Kahn will expel you from the program');
 	`)
 }
 
-func InitAllDBs() {
-	for _, team := range middleware.Teams {
-		dbPath := fmt.Sprintf("/data/%s.db", team)
-		d, err := sql.Open("sqlite3", dbPath)
-		if err != nil {
-			panic(err)
-		}
-		seedDB(d)
-		middleware.DBsLock.Lock()
-		middleware.DBs[team] = d
-		middleware.DBsLock.Unlock()
-	}
-}
-
-// SeedAllDBs re-seeds every team's database (used by scheduled reset).
-func SeedAllDBs() {
-	for _, team := range middleware.Teams {
-		d := middleware.GetTeamDB(team)
-		if d != nil {
-			seedDB(d)
-		}
-	}
-	log.Printf("🔄 All team databases re-seeded (%d teams)", len(middleware.Teams))
-}
-
 func DetectNoneAlg(w http.ResponseWriter, r *http.Request) {
-	team := r.Header.Get("X-Team")
+	sessionID := r.Header.Get("X-Session-ID")
 	tokenStr := ""
 	if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
 		tokenStr = strings.TrimPrefix(auth, "Bearer ")
@@ -405,7 +489,7 @@ func DetectNoneAlg(w http.ResponseWriter, r *http.Request) {
 
 	parts := strings.Split(tokenStr, ".")
 	if len(parts) == 3 && parts[2] == "" {
-		tracker.CompleteTask(team, 8, "JWT with alg:none detected")
+		tracker.CompleteTask(sessionID, 8, "JWT with alg:none detected")
 	}
 }
 
@@ -426,9 +510,9 @@ func Health(w http.ResponseWriter, r *http.Request) {
 }
 
 func Toasty(w http.ResponseWriter, r *http.Request) {
-	team := r.Header.Get("X-Team")
-	if team == "" {
-		WriteJSON(w, 400, map[string]string{"error": "No team"})
+	sessionID := r.Header.Get("X-Session-ID")
+	if sessionID == "" {
+		WriteJSON(w, 400, map[string]string{"error": "No session"})
 		return
 	}
 
@@ -437,7 +521,7 @@ func Toasty(w http.ResponseWriter, r *http.Request) {
 		strings.Contains(strings.ToLower(userAgent), "sub-zero") ||
 		strings.Contains(strings.ToLower(userAgent), "raiden")
 
-	d := teamDB(r)
+	d := sessionDB(r)
 	var count int
 	d.QueryRow("SELECT COUNT(*) FROM notes WHERE UPPER(title) = 'FINISH HIM' AND content LIKE '%↑↑↓↓←→←→BA%'").Scan(&count)
 
@@ -455,21 +539,16 @@ func Toasty(w http.ResponseWriter, r *http.Request) {
 			"scorpion_says": "GET OVER HERE!",
 			"sub_zero_says": "The secret is frozen no more",
 		}
-
 		if isKombatWarrior {
 			response["special_bonus"] = "You've chosen your fighter wisely!"
 			response["hidden_flag"] = "FLAG{raiden_consulted_with_the_elder_gods}"
 		}
-
 		WriteJSON(w, 200, response)
 	} else {
 		hint := "You must prove yourself worthy in kombat first..."
 		if isKombatWarrior {
 			hint = "Even warriors of the realm need the right kombat credentials. Create the victory note first!"
 		}
-		WriteJSON(w, 403, map[string]string{
-			"error": "Access Denied",
-			"hint":  hint,
-		})
+		WriteJSON(w, 403, map[string]string{"error": "Access Denied", "hint": hint})
 	}
 }

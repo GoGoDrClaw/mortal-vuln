@@ -9,86 +9,71 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"vulnnotes/db"
 	"vulnnotes/models"
 
 	"github.com/golang-jwt/jwt/v5"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 var (
-	Teams   = getTeams()
-	DBs     = map[string]*sql.DB{}
-	DBsLock sync.RWMutex
+	SessionDBs     = map[string]*sql.DB{}
+	SessionDBsLock sync.RWMutex
 )
 
-func getTeams() []string {
-	// All 23 UMK3 characters ordered by popularity
-	allTeams := []string{
-		"scorpion",       // 🦂 most iconic
-		"subzero",        // ❄️  most iconic
-		"liukang",        // 🔥 main protagonist
-		"kitana",         // 👸 fan favourite
-		"raiden",         // ⚡ fan favourite
-		"jax",            // 💪
-		"mileena",        // 🎭
-		"kunglao",        // 🎩
-		"sonya",          // 🎖️
-		"shangtsung",     // 💀
-		"kano",           // 🔴
-		"nightwolf",      // 🐺
-		"cyrax",          // 🤖
-		"sektor",         // 🔴
-		"kabal",          // ⚔️
-		"jade",           // 💚
-		"sindel",         // 👑
-		"ermac",          // 👻
-		"sheeva",         // 👊
-		"stryker",        // 🚔
-		"smoke",          // 💨
-		"noobsaibot",     // 🌑
-	}
+var JWTSecret = []byte(envOr("JWT_SECRET", "secret123"))
 
-	count := 6 // default
-	if s := os.Getenv("TEAM_COUNT"); s != "" {
-		if n, err := strconv.Atoi(s); err == nil && n >= 2 && n <= len(allTeams) {
-			count = n
-		}
+func envOr(k, def string) string {
+	if v := os.Getenv(k); v != "" {
+		return v
 	}
-
-	return allTeams[:count]
+	return def
 }
 
-var JWTSecret = []byte("secret123")
-
-func ValidTeam(team string) bool {
-	for _, t := range Teams {
-		if t == team {
-			return true
-		}
+// GetSessionDB returns (or opens) the isolated SQLite database for a session.
+// The DB is only opened — seeding is done separately by handlers.
+func GetSessionDB(sessionID string) *sql.DB {
+	if sessionID == "" {
+		return nil
 	}
-	return false
-}
 
-func GetTeamDB(team string) *sql.DB {
-	DBsLock.RLock()
-	defer DBsLock.RUnlock()
-	return DBs[team]
-}
-
-func TeamFromRequest(r *http.Request) string {
-	if c, err := r.Cookie("team"); err == nil && ValidTeam(c.Value) {
-		return c.Value
+	SessionDBsLock.RLock()
+	d, ok := SessionDBs[sessionID]
+	SessionDBsLock.RUnlock()
+	if ok {
+		return d
 	}
-	return ""
+
+	dbPath := fmt.Sprintf("/data/sessions/%s.db", sessionID)
+	d, err := sql.Open("sqlite3", dbPath)
+	if err != nil {
+		return nil
+	}
+
+	SessionDBsLock.Lock()
+	SessionDBs[sessionID] = d
+	SessionDBsLock.Unlock()
+	return d
 }
 
-func RequireTeam(next http.HandlerFunc) http.HandlerFunc {
+// RequireSession validates the "session_id" cookie against PostgreSQL.
+func RequireSession(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		team := TeamFromRequest(r)
-		if team == "" {
-			writeJSON(w, 400, map[string]string{"error": "No team selected"})
+		c, err := r.Cookie("session_id")
+		if err != nil || c.Value == "" {
+			writeJSON(w, 401, map[string]string{"error": "No session — start or restore a game first"})
 			return
 		}
-		r.Header.Set("X-Team", team)
+
+		sess, err := db.GetSessionByID(c.Value)
+		if err != nil || sess == nil {
+			writeJSON(w, 401, map[string]string{"error": "Invalid session"})
+			return
+		}
+
+		r.Header.Set("X-Session-ID", sess.ID)
+		r.Header.Set("X-Character", sess.Character)
+		r.Header.Set("X-Nickname", sess.Nickname)
 		next(w, r)
 	}
 }
@@ -119,8 +104,9 @@ func Authenticate(r *http.Request) (*models.Claims, error) {
 	return claims, nil
 }
 
+// RequireAuth wraps RequireSession + JWT validation.
 func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
-	return RequireTeam(func(w http.ResponseWriter, r *http.Request) {
+	return RequireSession(func(w http.ResponseWriter, r *http.Request) {
 		claims, err := Authenticate(r)
 		if err != nil {
 			writeJSON(w, 401, map[string]string{"error": "Unauthorized: " + err.Error()})
@@ -136,7 +122,6 @@ func RequireAuth(next http.HandlerFunc) http.HandlerFunc {
 func CORS(next http.HandlerFunc) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
-		// Allow requests from any subdomain of our domain (for local/remote setup)
 		if origin != "" {
 			w.Header().Set("Access-Control-Allow-Origin", origin)
 		}

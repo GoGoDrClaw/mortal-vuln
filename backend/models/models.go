@@ -17,26 +17,12 @@ type Note struct {
 	Created string `json:"created"`
 }
 
+// Claims is intentionally insecure (CTF: password exposed in JWT payload).
 type Claims struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	Password string `json:"password"`
-	Team     string `json:"team"`
+	ID        int    `json:"id"`
+	Username  string `json:"username"`
+	Role      string `json:"role"`
+	Password  string `json:"password"`
+	SessionID string `json:"sessionId"`
 	jwt.RegisteredClaims
-}
-
-type TaskProgress struct {
-	Team      string `json:"team"`
-	TaskID    int    `json:"task_id"`
-	TaskName  string `json:"task_name"`
-	Points    int    `json:"points"`
-	Timestamp string `json:"timestamp"`
-	Details   string `json:"details,omitempty"`
-}
-
-type TeamScore struct {
-	Team       string         `json:"team"`
-	TotalScore int            `json:"total_score"`
-	Completed  []TaskProgress `json:"completed"`
 }

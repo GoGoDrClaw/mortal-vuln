@@ -654,3 +654,105 @@ button {
   .mk-title { letter-spacing: 1px; }
   .mk-bottom-bar { display: none; }
 }
+
+/* ── Start screen ──────────────────────────────────────────────── */
+.mk-start-panel {
+  max-width: 480px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+.mk-start-logo {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(12px, 3vw, 20px);
+  color: #ffdd00;
+  text-shadow: 0 0 12px #ffdd00, 3px 3px 0 #880000;
+  letter-spacing: 4px;
+  margin-bottom: 12px;
+}
+
+.mk-start-sub {
+  font-size: 9px;
+  color: #ff6600;
+  letter-spacing: 4px;
+  margin-bottom: 32px;
+}
+
+.mk-start-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.btn-start {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 18px 24px;
+  border: 2px solid;
+  cursor: pointer;
+  font-family: 'Press Start 2P', monospace;
+  transition: transform 0.1s, box-shadow 0.1s;
+  background: rgba(0,0,0,0.7);
+}
+
+.btn-start:hover { transform: scale(1.03); }
+.btn-start:active { transform: scale(0.97); }
+
+.btn-new-game {
+  border-color: #ffdd00;
+  box-shadow: 0 0 12px #ffdd0066, inset 0 0 8px #ffdd0011;
+  color: #ffdd00;
+}
+
+.btn-continue {
+  border-color: #22c55e;
+  box-shadow: 0 0 12px #22c55e66, inset 0 0 8px #22c55e11;
+  color: #22c55e;
+}
+
+.btn-start-icon { font-size: 20px; }
+.btn-start-label { font-size: 14px; letter-spacing: 4px; }
+.btn-start-hint { font-size: 7px; color: #888; letter-spacing: 1px; }
+
+/* ── Save code reveal ──────────────────────────────────────────── */
+.mk-savecode-panel {
+  max-width: 480px;
+  margin: 40px auto;
+  text-align: center;
+}
+
+.mk-savecode-warn {
+  font-size: 8px;
+  color: #ef4444;
+  letter-spacing: 2px;
+  animation: blink 1s step-start infinite;
+  margin: 12px 0;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.mk-savecode-box {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(18px, 6vw, 32px);
+  color: #ffdd00;
+  background: rgba(0,0,0,0.6);
+  border: 2px solid #ffdd00;
+  box-shadow: 0 0 20px #ffdd0088;
+  letter-spacing: 6px;
+  padding: 16px 24px;
+  margin: 16px 0;
+  user-select: all;
+  cursor: copy;
+}
+
+.mk-savecode-sub {
+  font-size: 8px;
+  color: #94a3b8;
+  line-height: 1.8;
+  margin: 8px 0 16px;
+}

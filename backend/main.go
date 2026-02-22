@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"strings"
 	"time"
+	"vulnnotes/db"
 	"vulnnotes/handlers"
 	"vulnnotes/middleware"
 	"vulnnotes/tracker"
@@ -40,15 +40,38 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 }
 
 func route(mux *http.ServeMux) {
-	mux.HandleFunc("/api/health", middleware.CORS(handlers.Health))
-	mux.HandleFunc("/api/select-team", middleware.CORS(handlers.SelectTeam))
+	// Public — session management
+	mux.HandleFunc("/api/session/new",     middleware.CORS(handlers.NewSession))
+	mux.HandleFunc("/api/session/restore", middleware.CORS(handlers.RestoreSession))
+	mux.HandleFunc("/api/session/check",   middleware.CORS(handlers.CheckSession))
+	mux.HandleFunc("/api/characters",      middleware.CORS(handlers.GetCharacters))
 
-	mux.HandleFunc("/api/login", middleware.CORS(middleware.RequireTeam(func(w http.ResponseWriter, r *http.Request) {
+	// Public — scores & health
+	mux.HandleFunc("/api/health",  middleware.CORS(handlers.Health))
+	mux.HandleFunc("/api/scores",  middleware.CORS(handlers.GetScores))
+
+	// Public — flag submission (requires session cookie)
+	mux.HandleFunc("/api/flag", middleware.CORS(middleware.RequireSession(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			handlers.SubmitFlag(w, r)
+		}
+	})))
+
+	// Public — reset (requires session cookie, no JWT needed)
+	mux.HandleFunc("/api/reset", middleware.CORS(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			handlers.Reset(w, r)
+		}
+	}))
+
+	// Session-required
+	mux.HandleFunc("/api/login", middleware.CORS(middleware.RequireSession(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			handlers.Login(w, r)
 		}
 	})))
 
+	// Auth-required (session + JWT)
 	mux.HandleFunc("/api/notes", middleware.CORS(middleware.RequireAuth(handlers.TrackAuth(func(w http.ResponseWriter, r *http.Request) {
 		switch r.Method {
 		case http.MethodGet:
@@ -78,23 +101,9 @@ func route(mux *http.ServeMux) {
 		}
 	}))))
 
-	mux.HandleFunc("/api/flag", middleware.CORS(middleware.RequireTeam(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			handlers.SubmitFlag(w, r)
-		}
-	})))
+	mux.HandleFunc("/api/toasty", middleware.CORS(middleware.RequireSession(handlers.Toasty)))
 
-	mux.HandleFunc("/api/reset", middleware.CORS(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			handlers.Reset(w, r)
-		}
-	}))
-
-	mux.HandleFunc("/api/scores", middleware.CORS(handlers.GetScores))
-	mux.HandleFunc("/api/teams", middleware.CORS(handlers.GetTeams))
-	mux.HandleFunc("/api/toasty", middleware.CORS(middleware.RequireTeam(handlers.Toasty)))
-
-	// WebSocket endpoint with CORS support
+	// WebSocket
 	mux.HandleFunc("/ws", func(w http.ResponseWriter, r *http.Request) {
 		origin := r.Header.Get("Origin")
 		if origin != "" {
@@ -110,23 +119,24 @@ func route(mux *http.ServeMux) {
 }
 
 func main() {
-	handlers.InitAllDBs()
+	// PostgreSQL — sessions + progress
+	if err := db.InitPostgres(); err != nil {
+		log.Fatalf("❌ PostgreSQL: %v", err)
+	}
 
-	// Start rate limiter GC (cleans stale per-IP entries)
+	// Ensure /data/sessions/ dir exists
+	handlers.InitSessions()
+
+	// Rate limiter GC
 	middleware.StartLimiterGC()
-
-	// Start scheduled reset if RESET_TIME is set
-	tracker.StartResetScheduler(handlers.SeedAllDBs)
 
 	mux := http.NewServeMux()
 	route(mux)
 
-	// Wrap the entire mux with rate limiting
 	handler := middleware.RateLimitHandler(mux)
 
 	fmt.Printf("🔓 VulnNotes Backend started at %s\n", time.Now().Format("15:04:05"))
 	fmt.Printf("   Port: 3000\n")
-	fmt.Printf("   Teams: %s\n", strings.Join(middleware.Teams, ", "))
 	fmt.Printf("   WebSocket: ws://localhost:3000/ws\n")
 
 	log.Fatal(http.ListenAndServe(":3000", handler))

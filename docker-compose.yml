@@ -1,23 +1,48 @@
 networks:
   vulnnotes:
     driver: bridge
+
+volumes:
+  postgres_data:
+
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: vulnnotes-postgres
+    environment:
+      - POSTGRES_USER=ctf
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-ctfpassword}
+      - POSTGRES_DB=ctf
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - vulnnotes
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ctf"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   backend:
     build: ./backend
     container_name: vulnnotes-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
-    - PORT=3000
-    - JWT_SECRET=${JWT_SECRET:-secret123}
-    - TEAM_COUNT=${TEAM_COUNT:-6}
-    - RESET_TIME=${RESET_TIME:-}
-    - RESET_TIMEZONE=${RESET_TIMEZONE:-UTC}
-    - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-20}
-    - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-40}
-    - RATE_LIMIT_DISABLED=${RATE_LIMIT_DISABLED:-}
+      - PORT=3000
+      - JWT_SECRET=${JWT_SECRET:-secret123}
+      - PGHOST=postgres
+      - PGPORT=5432
+      - PGUSER=ctf
+      - PGPASSWORD=${POSTGRES_PASSWORD:-ctfpassword}
+      - PGDATABASE=ctf
+      - RATE_LIMIT_RPS=${RATE_LIMIT_RPS:-20}
+      - RATE_LIMIT_BURST=${RATE_LIMIT_BURST:-40}
+      - RATE_LIMIT_DISABLED=${RATE_LIMIT_DISABLED:-}
     networks:
-    - vulnnotes
+      - vulnnotes
     restart: unless-stopped
     volumes:
-    - ./data:/data
-version: '3.8'
-volumes: {}
+      - ./data:/data

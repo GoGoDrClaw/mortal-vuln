@@ -44,3 +44,18 @@ dashboard.{$DOMAIN:localhost} {
 		format console
 	}
 }
+
+# Bot Platform Dashboard
+tg.antiit.ru {
+  @webhook path_regexp webhook ^/w/(?P<bot_id>[a-zA-Z0-9_-]+)
+  handle @webhook {
+    reverse_proxy bot-{http.regexp.webhook.bot_id}:8080
+  }
+
+  handle {
+    basicauth {
+      botmaster $2b$12$AAxlKAjPoL9AH5k7YEXIz.LwiKeej7jIz9MmBLvuLi2A5uREPdT2u
+    }
+    reverse_proxy http://bot-manager:3000
+  }
+}

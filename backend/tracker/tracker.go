@@ -5,26 +5,45 @@ import (
 	"log"
 	"sync"
 	"time"
-	"vulnnotes/middleware"
-	"vulnnotes/models"
+	"vulnnotes/db"
 
 	"github.com/gorilla/websocket"
 )
 
 var (
-	progress     = make(map[string]map[int]models.TaskProgress)
-	progressLock sync.RWMutex
-	clients      = make(map[*websocket.Conn]bool)
-	clientsLock  sync.RWMutex
-	broadcast    = make(chan models.TaskProgress, 100)
+	clients     = make(map[*websocket.Conn]bool)
+	clientsLock sync.RWMutex
+	broadcast   = make(chan TaskProgress, 100)
 )
 
+// TaskProgress is a single completed CTF task, enriched with session metadata.
+type TaskProgress struct {
+	SessionID string `json:"sessionId"`
+	Nickname  string `json:"nickname"`
+	Character string `json:"character"`
+	TaskID    int    `json:"taskId"`
+	TaskName  string `json:"taskName"`
+	Points    int    `json:"points"`
+	Timestamp string `json:"timestamp"`
+	Details   string `json:"details"`
+}
+
+// SessionScore is the leaderboard entry for one player session.
+type SessionScore struct {
+	SessionID  string         `json:"sessionId"`
+	Nickname   string         `json:"nickname"`
+	Character  string         `json:"character"`
+	SaveCode   string         `json:"saveCode"`
+	TotalScore int            `json:"totalScore"`
+	Completed  []TaskProgress `json:"completed"`
+}
+
 var taskPoints = map[int]int{
-	0: 1,                    // Brute force
-	1: 1, 2: 1, 3: 1,        // Easy
-	4: 2, 5: 2, 6: 2, 7: 2,  // Medium
-	8: 3, 9: 3,              // Hard
-	10: 3,                   // Secret easter egg
+	0: 1,
+	1: 1, 2: 1, 3: 1,
+	4: 2, 5: 2, 6: 2, 7: 2,
+	8: 3, 9: 3,
+	10: 3,
 }
 
 var taskNames = map[int]string{
@@ -42,83 +61,129 @@ var taskNames = map[int]string{
 }
 
 func init() {
-	for _, team := range middleware.Teams {
-		progress[team] = make(map[int]models.TaskProgress)
-	}
-
-	// Initialize persistent progress database
-	if err := InitProgressDB(); err != nil {
-		log.Fatalf("❌ Failed to initialize progress database: %v", err)
-	}
-
 	go handleBroadcasts()
 }
 
-func CompleteTask(team string, taskID int, details string) {
-	progressLock.Lock()
-	defer progressLock.Unlock()
-
-	if _, exists := progress[team][taskID]; exists {
+// CompleteTask records a task completion for a session.
+func CompleteTask(sessionID string, taskID int, details string) {
+	if db.PG == nil {
 		return
 	}
 
-	task := models.TaskProgress{
-		Team:      team,
+	name := taskNames[taskID]
+	points := taskPoints[taskID]
+
+	// Check duplicate
+	var count int
+	db.PG.QueryRow(
+		`SELECT COUNT(*) FROM task_completions WHERE session_id = $1 AND task_id = $2`,
+		sessionID, taskID,
+	).Scan(&count)
+	if count > 0 {
+		return
+	}
+
+	_, err := db.PG.Exec(`
+		INSERT INTO task_completions (session_id, task_id, task_name, points, details)
+		VALUES ($1, $2, $3, $4, $5)
+		ON CONFLICT DO NOTHING
+	`, sessionID, taskID, name, points, details)
+	if err != nil {
+		log.Printf("⚠️ failed to save task %d for session %s: %v", taskID, sessionID, err)
+		return
+	}
+
+	sess, _ := db.GetSessionByID(sessionID)
+	nick, char := "", ""
+	if sess != nil {
+		nick = sess.Nickname
+		char = sess.Character
+	}
+
+	task := TaskProgress{
+		SessionID: sessionID,
+		Nickname:  nick,
+		Character: char,
 		TaskID:    taskID,
-		TaskName:  taskNames[taskID],
-		Points:    taskPoints[taskID],
+		TaskName:  name,
+		Points:    points,
 		Timestamp: time.Now().Format("15:04:05"),
 		Details:   details,
 	}
 
-	progress[team][taskID] = task
-
-	// Save to persistent database
-	if err := saveTaskToDB(task); err != nil {
-		log.Printf("⚠️  Failed to save task to DB: %v", err)
-	}
-
-	log.Printf("✅ Team %s completed task %d: %s (+%d pts)", team, taskID, taskNames[taskID], taskPoints[taskID])
-
+	log.Printf("✅ %s (%s) completed task %d: %s (+%d pts)", nick, char, taskID, name, points)
 	broadcast <- task
 }
 
-func GetTeamScore(team string) models.TeamScore {
-	progressLock.RLock()
-	defer progressLock.RUnlock()
-
-	score := models.TeamScore{
-		Team:      team,
-		Completed: []models.TaskProgress{},
+// GetSessionScore returns the score for one session.
+func GetSessionScore(sessionID string) SessionScore {
+	score := SessionScore{
+		SessionID: sessionID,
+		Completed: []TaskProgress{},
 	}
 
-	for _, task := range progress[team] {
-		score.TotalScore += task.Points
-		score.Completed = append(score.Completed, task)
+	if db.PG == nil {
+		return score
 	}
 
+	sess, _ := db.GetSessionByID(sessionID)
+	if sess != nil {
+		score.Nickname = sess.Nickname
+		score.Character = sess.Character
+		score.SaveCode = sess.SaveCode
+	}
+
+	rows, err := db.PG.Query(`
+		SELECT task_id, task_name, points, details, completed_at
+		FROM task_completions WHERE session_id = $1
+		ORDER BY completed_at
+	`, sessionID)
+	if err != nil {
+		return score
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var t TaskProgress
+		var ts time.Time
+		rows.Scan(&t.TaskID, &t.TaskName, &t.Points, &t.Details, &ts)
+		t.Timestamp = ts.Format("15:04:05")
+		t.SessionID = sessionID
+		t.Nickname = score.Nickname
+		t.Character = score.Character
+		score.TotalScore += t.Points
+		score.Completed = append(score.Completed, t)
+	}
 	return score
 }
 
-func GetAllScores() []models.TeamScore {
-	scores := []models.TeamScore{}
-	for _, team := range middleware.Teams {
-		scores = append(scores, GetTeamScore(team))
+// GetAllScores returns the leaderboard (all sessions, ordered by score).
+func GetAllScores() []SessionScore {
+	if db.PG == nil {
+		return []SessionScore{}
+	}
+
+	rows, err := db.PG.Query(`
+		SELECT s.id, s.save_code, s.nickname, s.character,
+		       COALESCE(SUM(tc.points), 0) AS total_score
+		FROM sessions s
+		LEFT JOIN task_completions tc ON tc.session_id = s.id
+		GROUP BY s.id, s.save_code, s.nickname, s.character
+		ORDER BY total_score DESC, s.created_at ASC
+	`)
+	if err != nil {
+		return []SessionScore{}
+	}
+	defer rows.Close()
+
+	scores := []SessionScore{}
+	for rows.Next() {
+		var s SessionScore
+		rows.Scan(&s.SessionID, &s.SaveCode, &s.Nickname, &s.Character, &s.TotalScore)
+		s.Completed = []TaskProgress{}
+		scores = append(scores, s)
 	}
 	return scores
-}
-
-func ResetTeam(team string) {
-	progressLock.Lock()
-	defer progressLock.Unlock()
-	progress[team] = make(map[int]models.TaskProgress)
-
-	// Clear from persistent database
-	if err := resetTeamInDB(team); err != nil {
-		log.Printf("⚠️  Failed to reset team in DB: %v", err)
-	}
-
-	log.Printf("🔄 Team %s progress reset", team)
 }
 
 func RegisterClient(conn *websocket.Conn) {
@@ -152,8 +217,7 @@ func handleBroadcasts() {
 		var failed []*websocket.Conn
 		clientsLock.RLock()
 		for client := range clients {
-			err := client.WriteMessage(websocket.TextMessage, data)
-			if err != nil {
+			if err := client.WriteMessage(websocket.TextMessage, data); err != nil {
 				client.Close()
 				failed = append(failed, client)
 			}
@@ -162,8 +226,8 @@ func handleBroadcasts() {
 
 		if len(failed) > 0 {
 			clientsLock.Lock()
-			for _, client := range failed {
-				delete(clients, client)
+			for _, c := range failed {
+				delete(clients, c)
 			}
 			clientsLock.Unlock()
 		}
